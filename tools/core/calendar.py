@@ -32,7 +32,6 @@ def remove_event(uid: int) -> str:
   Returns:
     A string status of the event removal
   """
-  pass
 
 
 def edit_event(uid: int, date: str | None = None, time: str | None = None, comment: str | None = None) -> str:
