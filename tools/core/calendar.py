@@ -14,7 +14,6 @@ def add_event(name: str, date: str, time: str, comment: str | None = None) -> in
   Returns:
     A uid of the added event
   """
-  pass
 
 
 def get_event(uid: int) -> str:
@@ -23,7 +22,6 @@ def get_event(uid: int) -> str:
   Raises:
     KeyError: If no events found by the given uid
   """
-  pass
 
 
 def remove_event(uid: int) -> str:
@@ -60,7 +58,6 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
   Returns:
     A string result of events search
   """
-  pass
 
 
 def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> int:
@@ -83,7 +80,6 @@ def remove_reminder(uid: int) -> str:
   Returns:
     A string status of the reminder removal
   """
-  pass
 
 
 def get_reminder(uid: int) -> str:
@@ -92,7 +88,6 @@ def get_reminder(uid: int) -> str:
   Raises:
     KeyError: If no reminders found by the given uid
   """
-  pass
 
 
 def get_all_reminders(date: str = CURRENT.DATE) -> str:

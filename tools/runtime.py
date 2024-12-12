@@ -1,11 +1,11 @@
 import enum
 import inspect
-import zoneinfo as zi
 
 from collections.abc import Callable
 from datetime import datetime
 from functools import cached_property
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from attrs import define
 from mako.template import Template
@@ -17,18 +17,18 @@ class Runtime:
   location: str
 
   @cached_property
-  def tz(self) -> zi.ZoneInfo:
-    return zi.ZoneInfo(self.timezone)
+  def tz(self) -> ZoneInfo:
+    return ZoneInfo(self.timezone)
 
   @property
   def date(self) -> str:
-    """Returns a current date as a simple separated ISO8601 string (<YYYY-MM-DD>, always local timezone)."""
+    """Returns a current date as a simple separated ISO8601 string <YYYY-MM-DD> (always local timezone)."""
 
     return datetime.now(self.tz).strftime("%Y-%m-%d")
 
   @property
   def time(self) -> str:
-    """Returns only a current time as an ISO 8601 compatible (<hours:minutes:seconds>, always local timezone)."""
+    """Returns only a current time as an ISO 8601 compatible <hours:minutes:seconds> (always local timezone)."""
 
     return datetime.now(self.tz).strftime("%H:%M:%S")
 
@@ -39,7 +39,8 @@ class Runtime:
     return f"{self.date} {self.time}"
 
 
-RUNTIME = Runtime("Europe/Moscow", "Moscow")
+def _get_current_var_name(name: str) -> str:
+  return f"CURRENT_{name.upper()}"
 
 
 class CURRENT(enum.StrEnum):
@@ -47,7 +48,7 @@ class CURRENT(enum.StrEnum):
 
   @staticmethod
   def _generate_next_value_(name: str, *_) -> str:
-    return "${%s}" % f"CURRENT_{name.upper()}"
+    return "${%s}" % _get_current_var_name(name)
 
   TIME: str = enum.auto()
   DATE: str = enum.auto()
@@ -56,7 +57,7 @@ class CURRENT(enum.StrEnum):
 
   @enum.property
   def alias(self) -> str:
-    return f"CURRENT_{self.name.upper()}"
+    return _get_current_var_name(self.name)
 
 
 def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
@@ -88,3 +89,6 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
       kws[key] = val
 
   return fn(**kws)
+
+
+DEFAULT = Runtime("Europe/Moscow", "Moscow")
