@@ -14,22 +14,22 @@ CORE = ROOT.joinpath("tools").joinpath("core")
 DEST = ROOT.joinpath("data").joinpath("tools")
 
 
-def should_export(m: ModuleType, name: str) -> bool:
+def include(module: ModuleType, name: str) -> bool:
   if name.startswith("_"):
     return False
-  member = getattr(m, name)
-  return inspect.isfunction(member) and member.__module__ == m.__name__
+  member = getattr(module, name)
+  return inspect.isfunction(member) and member.__module__ == module.__name__
 
 
-def convert_module_to_jsonl(module: ModuleType, fpath: Path) -> None:
-  functions = [getattr(module, name) for name in dir(module) if should_export(module, name)]
-  tool_schemas = [get_tool_schema(fn) for fn in functions]
+def module_to_jsonl(module: ModuleType, fpath: Path) -> None:
+  functions = [getattr(module, name) for name in dir(module) if include(module, name)]
+  schemas = [get_tool_schema(fn) for fn in functions]
 
-  if not tool_schemas:
+  if not schemas:
     return
 
-  with open(fpath, mode="w") as fd:
-    for schema in tool_schemas:
+  with open(fpath.with_suffix(".jsonl"), mode="w") as fd:
+    for schema in schemas:
       fd.write(json.dumps(schema, ensure_ascii=False) + "\n")
 
 
@@ -47,20 +47,20 @@ def main(root: Path = CORE, dest: Path = DEST, module: str | None = None) -> Non
   dest.mkdir(parents=True, exist_ok=True)
   sys.path.append(root.as_posix())
   for path in modules:
-    # skip init modules
-    if path.stem == "__init__":
+    if path.stem == "__init__":  # skip init modules
       continue
-    print(f"Convering {path.stem!r} ...", end=" ")
+    print(f"Convering '{path.stem}'", end=" ", flush=True)
     s = importlib.util.spec_from_file_location(path.stem, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
-    p = dest.joinpath(path.name).with_suffix(".jsonl")
+    p = dest.joinpath(path.stem)
     try:
-      convert_module_to_jsonl(m, p)
+      module_to_jsonl(m, p)
     except Exception as err:
-      print(f"error! {err}")
+      print(f"error ! {err}")
     else:
-      print(f"ok! -> {p}")
+      print(f"ok → {p}")
+  print("Done")
 
 
 if __name__ == "__main__":
