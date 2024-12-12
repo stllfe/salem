@@ -44,7 +44,7 @@ def _get_current_var_name(name: str) -> str:
 
 
 class CURRENT(enum.StrEnum):
-  """Simple placeholders for the current's runtime values for dynamic values."""
+  """Simple placeholders for the current dynamic runtime values."""
 
   @staticmethod
   def _generate_next_value_(name: str, *_) -> str:
