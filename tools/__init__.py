@@ -1,22 +1,8 @@
 """
-calendar.add_event(date: str, time: str, comment: str = "") -> str,
-calendar.get_event(id: int) -> str,
-calendar.edit_event(id: int, date: str | None = None, time: str | None = None, comment: str | None = None) -> str,
-calendar.get_all_events(start: str = CURRENT_DATE, end: str = CURRENT_DATE, regex: str | None = None) -> str,
-calendar.add_reminder(time: str, msg: str, date: str = CURRENT_DATE),
-calendar.remove_reminder(id: int) -> str,
-calendar.get_reminder(id: int) -> str,
-calendar.get_all_reminders(date: str = CURRENT_DATE) -> str,
-time.get_now(location: str = CURRENT_LOCATION) -> str,
-time.add_dates(d1: str, d2: str) -> str,
-time.set_timer(hours: int, minutes: int, seconds: int) -> str,
-time.get_timer(id: int) -> str,
-time.get_all_timers() -> str,
-time.remove_timer(id: int) -> str,
 weather.get_weather(location: str = CURRENT_LOCATION) -> str,
 weather.get_forecast(days: int, location: str = CURRENT_LOCATION) -> str,
-math.solve(expr: str) -> str,
-web.search_topk(query: str, k: int = 5) -> str,
-web.get_wiki_page(query: str) -> str,
-telegram.send_to_user(msg: str) -> str,
+math.solve(expr: str) -> str
+web.search_topk(query: str, k: int = 5) -> str
+web.get_wiki_page(query: str) -> str
+telegram.send_to_user(msg: str) -> str
 """

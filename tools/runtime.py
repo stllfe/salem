@@ -63,14 +63,14 @@ class CURRENT(enum.StrEnum):
 def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   """Runs the given tool function, interpolating context variables from the runtime."""
 
-  envmap = {
+  env_map = {
     CURRENT.TIME: rt.time,
     CURRENT.DATE: rt.date,
     CURRENT.DATETIME: rt.datetime,
     CURRENT.LOCATION: rt.location,
   }
 
-  ctx = {e.alias: v for e, v in envmap.items()}
+  ctx = {e.alias: v for e, v in env_map.items()}
   sig = inspect.signature(fn)
   kws = {}
 

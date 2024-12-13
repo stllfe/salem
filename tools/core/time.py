@@ -31,8 +31,10 @@ def set_timer(hours: int, minutes: int, seconds: int) -> int:
 
   Note: all values should be explicitly provided (e.g. `set_timer(0, 0, 10)` for a 10 seconds timer)
     and the total amount of time should not exceed the 24 hours limit
+
   Raises:
     ValueError: if the total amount of time exceeds 24 hours
+
   Returns:
     A uid of the timer added
   """
@@ -51,6 +53,7 @@ def remove_timer(uid: int) -> str:
 
   Raises:
     KeyError: If no timers found by the given uid
+
   Returns:
     A string status of the timer removal
   """
