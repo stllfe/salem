@@ -28,7 +28,7 @@ def module_to_jsonl(module: ModuleType, fpath: Path) -> None:
   if not schemas:
     return
 
-  with open(fpath.with_suffix(".jsonl"), mode="w") as fd:
+  with fpath.with_suffix(".jsonl").open(mode="w") as fd:
     for schema in schemas:
       fd.write(json.dumps(schema, ensure_ascii=False) + "\n")
 

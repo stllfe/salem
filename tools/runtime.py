@@ -28,7 +28,7 @@ class Runtime:
 
   @property
   def time(self) -> str:
-    """Returns only a current time as an ISO 8601 compatible <hours:minutes:seconds> (always local timezone)."""
+    """Returns only a current time as an ISO8601 compatible <hours:minutes:seconds> (always local timezone)."""
 
     return datetime.now(self.tz).strftime("%H:%M:%S")
 
