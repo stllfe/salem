@@ -21,6 +21,13 @@ def include(module: ModuleType, name: str) -> bool:
   return inspect.isfunction(member) and member.__module__ == module.__name__
 
 
+def load_module(mpath: Path) -> ModuleType:
+  s = importlib.util.spec_from_file_location(mpath.stem, mpath)
+  m = importlib.util.module_from_spec(s)
+  s.loader.exec_module(m)
+  return m
+
+
 def module_to_jsonl(module: ModuleType, fpath: Path) -> None:
   functions = [getattr(module, name) for name in dir(module) if include(module, name)]
   schemas = [get_tool_schema(fn) for fn in functions]
@@ -34,7 +41,7 @@ def module_to_jsonl(module: ModuleType, fpath: Path) -> None:
 
 
 def main(root: Path = CORE, dest: Path = DEST, module: str | None = None) -> None:
-  """Convert all functions in a module to a JSONL file for function calling."""
+  """Convert all functions in a module to a JSONL schema file for function calling."""
 
   if not root.is_dir():
     raise NotADirectoryError(root)
@@ -49,18 +56,16 @@ def main(root: Path = CORE, dest: Path = DEST, module: str | None = None) -> Non
   for path in modules:
     if path.stem == "__init__":  # skip init modules
       continue
-    print(f"Convering '{path.stem}'", end=" ", flush=True)
-    s = importlib.util.spec_from_file_location(path.stem, path)
-    m = importlib.util.module_from_spec(s)
-    s.loader.exec_module(m)
-    p = dest.joinpath(path.stem)
+    print(f"Compiling '{path.stem}'", end=" ", flush=True)
+    m = load_module(path)
+    p = dest.joinpath(path.stem).with_suffix(".jsonl")
     try:
       module_to_jsonl(m, p)
     except Exception as err:
       print(f"error ! {err}")
     else:
       print(f"ok → {p}")
-  print("Done")
+  print("Done!")
 
 
 if __name__ == "__main__":
