@@ -15,6 +15,7 @@ from mako.template import Template
 class Runtime:
   timezone: str
   location: str
+  language: str
 
   @cached_property
   def tz(self) -> ZoneInfo:
@@ -54,6 +55,7 @@ class CURRENT(enum.StrEnum):
   DATE: str = enum.auto()
   DATETIME: str = enum.auto()
   LOCATION: str = enum.auto()
+  LANGUAGE: str = enum.auto()
 
   @enum.property
   def alias(self) -> str:
@@ -68,6 +70,7 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
     CURRENT.DATE: rt.date,
     CURRENT.DATETIME: rt.datetime,
     CURRENT.LOCATION: rt.location,
+    CURRENT.LANGUAGE: rt.language,
   }
 
   ctx = {e.alias: v for e, v in env_map.items()}
@@ -91,4 +94,4 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   return fn(**kws)
 
 
-DEFAULT = Runtime("Europe/Moscow", "Moscow")
+DEFAULT = Runtime("Europe/Moscow", "Moscow", "ru")
