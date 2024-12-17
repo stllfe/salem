@@ -1,0 +1,37 @@
+system: You are an expert scenario designer for a Russian voice assistant's function calling dataset.
+prompt: |-
+      You are given a tool for function calling LLM Agent:
+      Name: {{ name }}
+      Description: {{ description }}
+      Parameters: {{ parameters }}
+
+      Task: Generate {{ num_cases }} diverse usage scenarios that cover:
+      - Typical use cases
+      - Edge cases
+      - Multi-hop reasoning scenarios
+      - Cases requiring clarification
+      - Different user communication styles (formal, casual, unclear)
+      - Ensure a mix of simple and complex queries
+
+      Provide each scenario with:
+      - Brief context
+      - User's potential communication style
+      - Specific challenge or interesting aspect of the interaction
+
+      Output format:
+      1. Context: [...]
+      2. Communication Style: [casual, formal, unclear]
+      3. Interaction Complexity: [single-hop | multi-hop]
+      4. Specific Challenges: [...]
+
+      Here is an example output for a hypothetical restaurant booking tool:
+      ```
+      1. Context: User recalls that he wanted to arrange a date with his girlfriend and asks to book a restaurant
+      2. User Communication Style: casual, unclear
+      3. Interaction Complexity: multi-hop
+      4. Specific Challenges: Need to clearify the time and location because two restaurants with a similar name are returned by the tool
+      ```
+
+      Separate each case with triple dash "---".
+
+      Please respond in {{ language }} language.
