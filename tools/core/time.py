@@ -40,7 +40,7 @@ def set_timer(hours: int, minutes: int, seconds: int) -> int:
   """
 
 
-def get_timer(uid: int) -> str:
+def get_timer(uid: str) -> str:
   """Get a running timer information by the given uid."""
 
 
@@ -48,7 +48,7 @@ def get_all_timers() -> str:
   """Get all currently running timers information."""
 
 
-def remove_timer(uid: int) -> str:
+def remove_timer(uid: str) -> str:
   """Remove a timer by this uid.
 
   Raises:

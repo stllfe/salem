@@ -2,7 +2,7 @@
 from tools.runtime import CURRENT
 
 
-def add_event(name: str, date: str, time: str, comment: str | None = None) -> int:
+def add_event(name: str, date: str, time: str, comment: str | None = None) -> str:
   """Add a new event to the user's calendar.
 
   Args:
@@ -16,7 +16,7 @@ def add_event(name: str, date: str, time: str, comment: str | None = None) -> in
   """
 
 
-def get_event(uid: int) -> str:
+def get_event(uid: str) -> str:
   """Get an event by this uid.
 
   Raises:
@@ -24,7 +24,7 @@ def get_event(uid: int) -> str:
   """
 
 
-def remove_event(uid: int) -> str:
+def remove_event(uid: str) -> str:
   """Remove an event by this uid.
 
   Raises:
@@ -35,7 +35,7 @@ def remove_event(uid: int) -> str:
   """
 
 
-def edit_event(uid: int, date: str | None = None, time: str | None = None, comment: str | None = None) -> str:
+def edit_event(uid: str, date: str | None = None, time: str | None = None, comment: str | None = None) -> str:
   """Change some properties of an existing event.
 
   Args:
@@ -75,7 +75,7 @@ def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> int:
   """
 
 
-def remove_reminder(uid: int) -> str:
+def remove_reminder(uid: str) -> str:
   """Remove a reminder by this uid.
 
   Raises:
@@ -86,7 +86,7 @@ def remove_reminder(uid: int) -> str:
   """
 
 
-def get_reminder(uid: int) -> str:
+def get_reminder(uid: str) -> str:
   """Get a reminder by this uid.
 
   Raises:
