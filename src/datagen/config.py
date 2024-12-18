@@ -6,8 +6,6 @@ from src.datagen.types import GenerationArgs
 from src.utils import get_logger
 
 
-logger = get_logger()
-
 MODEL = getenv("MODEL", "qwen/Qwen2.5-32B-Instruct")
 
 DEFAULTS: dict[str | re.Pattern, GenerationArgs] = {
@@ -18,6 +16,9 @@ DEFAULTS: dict[str | re.Pattern, GenerationArgs] = {
     repetition_penalty=1.05,
   ),
 }
+
+
+logger = get_logger()
 
 
 def genargs_from_env(model: str | None = None) -> GenerationArgs:
