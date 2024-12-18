@@ -20,15 +20,18 @@ from src.datagen.config import genargs_from_env
 from src.datagen.openai import APIArgs
 from src.datagen.openai import generate
 from src.datagen.openai import get_client
+from src.utils import get_logger
 
 
 ROOT = Path(__file__).parent.parent
+
 DATA = ROOT.joinpath("data")
 TOOLS = DATA.joinpath("tools")
-PROMPTS = Path(__file__).parent.joinpath("prompts")
 INTERIM = DATA.joinpath("interim")
 
-logger = utils.get_logger()
+PROMPTS = Path(__file__).parent.joinpath("prompts")
+
+logger = get_logger()
 
 
 @define
@@ -69,14 +72,14 @@ class ConvosArgs(BaseArgs):
 
 async def append_jsonl(r: dict[str, str], f: Path, *, lock: asyncio.Lock | None = None) -> None:
   json = orjson.dumps(r).decode()
-  lock = lock or nullcontext
+  lock = lock or nullcontext()
   async with lock:
     async with AsyncPath(f).open(mode="a+", encoding="utf-8") as fd:
       await fd.write(json + "\n")
 
 
-async def generate_cases(args: CasesArgs) -> None:
-  """Generate cases for a tool use."""
+def generate_cases(args: CasesArgs) -> None:
+  """Generate cases for tool use."""
 
   from tqdm.asyncio import tqdm
 
@@ -85,7 +88,7 @@ async def generate_cases(args: CasesArgs) -> None:
   njobs = asyncio.BoundedSemaphore(args.njobs)
   lock = asyncio.Lock()
 
-  await AsyncPath(args.dest).parent.mkdir(exist_ok=True, parents=True)
+  args.dest.parent.mkdir(exist_ok=True, parents=True)
   logger.info(f"Saving results to {args.dest}")
 
   async def job(tool: dict) -> None:
@@ -93,8 +96,8 @@ async def generate_cases(args: CasesArgs) -> None:
     messages = prompt.prepare(**tool, num_cases=args.num_cases, language=args.language)
     async with njobs:
       try:
-        r = await generate(messages, llm, gen=args.gen, api=args.api)
-        await append_jsonl({"name": name, "result": r}, args.dest, lock=lock)
+        result = await generate(messages, llm, gen=args.gen, api=args.api)
+        await append_jsonl({"name": name, "result": result}, args.dest, lock=lock)
       except Exception as err:
         logger.error(f"Error while processing {name}: {err}")
 
@@ -103,11 +106,13 @@ async def generate_cases(args: CasesArgs) -> None:
   for p in args.tools.glob("*.jsonl"):
     logger.info(f"Adding '{p.stem}' tools ...")
     tasks.extend(map(job, utils.read_jsonl(p)))
-  await tqdm.gather(*tasks, desc="generating cases", unit="tool")
+
+  werk = tqdm.gather(*tasks, desc="generating cases", unit="tool")
+  asyncio.run(werk)
   logger.info("All done!")
 
 
-async def generate_convos(args: ConvosArgs) -> None:
+def generate_convos(args: ConvosArgs) -> None:
   # TODO: implement this one
   pass
 
@@ -117,8 +122,6 @@ if __name__ == "__main__":
 
   args = tyro.extras.subcommand_cli_from_dict({"cases": CasesArgs, "convos": ConvosArgs})
   if isinstance(args, CasesArgs):
-    job = generate_cases(args)
+    generate_cases(args)
   else:
-    job = generate_convos(args)
-
-  asyncio.run(job)
+    generate_convos(args)

@@ -2,10 +2,13 @@ import re
 
 from os import getenv
 
-from loguru import logger
-
 from src.datagen.types import GenerationArgs
+from src.utils import get_logger
 
+
+logger = get_logger()
+
+MODEL = getenv("MODEL", "qwen/Qwen2.5-32B-Instruct")
 
 DEFAULTS: dict[str | re.Pattern, GenerationArgs] = {
   re.compile(r"qwen/Qwen2.5-\d{1,2}B-Instruct"): GenerationArgs(
@@ -17,15 +20,14 @@ DEFAULTS: dict[str | re.Pattern, GenerationArgs] = {
 }
 
 
-def genargs_from_env() -> GenerationArgs:
-  model = getenv("MODEL")
-  args = GenerationArgs()
-  for tag in DEFAULTS:
+def genargs_from_env(model: str | None = None) -> GenerationArgs:
+  model = model or MODEL
+  for tag, args in DEFAULTS.items():
     if re.match(tag, model):
-      logger.info(f"Found preconfigured generation args: {model}")
-      args = DEFAULTS[tag]
-      break
-  else:
-    logger.info(f"Using default generation args for model: {model}")
-  logger.info(f"{args!r}")
+      logger.info(f"Found preconfigured generation args: {model}", once=True)
+      logger.info(f"{args!r}", once=True)
+      return args
+  logger.info(f"Using default generation args for model: {model}", once=True)
+  args = GenerationArgs()
+  logger.info(f"{args!r}", once=True)
   return args

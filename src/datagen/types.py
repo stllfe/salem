@@ -27,11 +27,11 @@ class Instruction:
     return j2.Template(self.prompt)
 
   def prepare(self, **context) -> list[dict[str, str]]:
-    h = []
+    chat = []
     if self.system:
-      h.append({"role": "system", "content": self.system})
-    h.append({"role": "user", "content": self.template.render(context)})
-    return h
+      chat.append({"role": "system", "content": self.system})
+    chat.append({"role": "user", "content": self.template.render(context)})
+    return chat
 
 
 @define
