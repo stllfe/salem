@@ -18,10 +18,10 @@ from pydantic import TypeAdapter
 from src.datagen import GenerationArgs
 from src.datagen import Language
 from src.datagen import utils
+from src.datagen.config import get_default_generation
 from src.datagen.openai import APIArgs
 from src.datagen.openai import generate
 from src.datagen.openai import get_client
-from src.datagen.types import get_default_generation
 from src.utils import get_logger
 
 
@@ -120,11 +120,10 @@ def generate_cases(args: CasesArgs) -> None:
   tools: list[dict] = []
   for p in args.tools.glob("*.jsonl"):
     logger.info(f"Adding '{p.stem}' tools ...")
-    for t in utils.read_jsonl(p):
-      tools.append(t)
+    tools.extend(utils.read_jsonl(p))
 
   prompt = utils.read_prompt(args.prompt)
-  names = [t["name"] for t in tools]
+  names = [tool["name"] for tool in tools]
 
   messages = prompt.prepare(**tools[0], tools=names, num_cases=args.num_cases, language=args.language)
   logger.info(f"Current system prompt: {prompt.system}")
