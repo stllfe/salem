@@ -2,6 +2,7 @@ from os import getenv
 
 from attrs import define
 from loguru import logger
+from openai import APIError
 from openai import AsyncClient
 from tenacity import retry
 from tenacity import stop_after_attempt
@@ -10,6 +11,7 @@ from src.datagen.types import GenerationArgs
 
 
 MAX_TRIES = int(getenv("MAX_TRIES", "3"))
+DECODING_BACKEND = getenv("DECODING_BACKEND", "outlines")
 
 
 @define
@@ -24,9 +26,16 @@ def get_client(api: APIArgs) -> AsyncClient:
   return AsyncClient(api_key=api.key, base_url=api.base_url)
 
 
-@logger.catch
+@logger.catch(APIError)
 @retry(stop=stop_after_attempt(MAX_TRIES), reraise=True)
-async def generate(messages: list[dict], llm: AsyncClient, *, gen: GenerationArgs, api: APIArgs) -> str:
+async def generate(
+  messages: list[dict],
+  llm: AsyncClient,
+  *,
+  gen: GenerationArgs,
+  api: APIArgs,
+  json_schema: dict | None = None,
+) -> str:
   extra = {}
   extra.update(
     top_k=gen.top_k,
@@ -34,6 +43,8 @@ async def generate(messages: list[dict], llm: AsyncClient, *, gen: GenerationArg
     min_tokens=gen.min_tokens,
     repetition_penalty=gen.repetition_penalty,
   )
+  if json_schema:
+    extra.update(guided_json=json_schema, guided_decoding_backend=DECODING_BACKEND)
   response = await llm.chat.completions.create(
     messages=messages,
     model=api.model,

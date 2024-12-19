@@ -1,8 +1,8 @@
 """Runs batch generation with an OpenAI compatible API endpoint."""
 
 import asyncio
+import enum
 
-from collections.abc import Coroutine
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -12,14 +12,16 @@ from aiopath import AsyncPath
 from attrs import define
 from attrs import field
 from attrs import validators as V
+from pydantic import BaseModel
+from pydantic import TypeAdapter
 
 from src.datagen import GenerationArgs
 from src.datagen import Language
 from src.datagen import utils
-from src.datagen.config import genargs_from_env
 from src.datagen.openai import APIArgs
 from src.datagen.openai import generate
 from src.datagen.openai import get_client
+from src.datagen.types import get_default_generation
 from src.utils import get_logger
 
 
@@ -46,7 +48,7 @@ class BaseArgs:
   """how many requests to run in parallel."""
 
   api: APIArgs = field(factory=APIArgs)
-  gen: GenerationArgs = field(factory=genargs_from_env)
+  gen: GenerationArgs = field(factory=get_default_generation)
 
 
 @define
@@ -78,6 +80,27 @@ async def append_jsonl(r: dict[str, str], f: Path, *, lock: asyncio.Lock | None 
       await fd.write(json + "\n")
 
 
+class Communication(enum.StrEnum):
+  CASUAL = enum.auto()
+  FORMAL = enum.auto()
+  UNCLEAR = enum.auto()
+
+
+class Interaction(enum.StrEnum):
+  SINGLE_HOP = enum.auto()
+  MULTI_HOP = enum.auto()
+
+
+class Case(BaseModel):
+  context: str
+  communication: Communication
+  interaction: Interaction
+  challenges: str
+
+
+Cases = TypeAdapter(list[Case])
+
+
 def generate_cases(args: CasesArgs) -> None:
   """Generate cases for tool use."""
 
@@ -91,23 +114,34 @@ def generate_cases(args: CasesArgs) -> None:
   args.dest.parent.mkdir(exist_ok=True, parents=True)
   logger.info(f"Saving results to {args.dest}")
 
+  schema = Cases.json_schema()
+  logger.info(f"Requested output schema: {Cases!r}")
+
+  tools: list[dict] = []
+  for p in args.tools.glob("*.jsonl"):
+    logger.info(f"Adding '{p.stem}' tools ...")
+    for t in utils.read_jsonl(p):
+      tools.append(t)
+
+  prompt = utils.read_prompt(args.prompt)
+  names = [t["name"] for t in tools]
+
+  messages = prompt.prepare(**tools[0], tools=names, num_cases=args.num_cases, language=args.language)
+  logger.info(f"Current system prompt: {prompt.system}")
+  logger.info(f"Example user message:\n{messages[-1]['content']}")
+
   async def job(tool: dict) -> None:
     name = tool["name"]
-    messages = prompt.prepare(**tool, num_cases=args.num_cases, language=args.language)
+    messages = prompt.prepare(**tool, tools=names, num_cases=args.num_cases, language=args.language)
     async with njobs:
       try:
-        result = await generate(messages, llm, gen=args.gen, api=args.api)
-        await append_jsonl({"name": name, "result": result}, args.dest, lock=lock)
+        result = await generate(messages, llm, gen=args.gen, api=args.api, json_schema=schema)
+        parsed = list(map(Case.model_dump, Cases.validate_json(result)))
+        await append_jsonl({"name": name, "cases": parsed}, args.dest, lock=lock)
       except Exception as err:
         logger.error(f"Error while processing {name}: {err}")
 
-  tasks: list[Coroutine] = []
-  prompt = utils.read_prompt(args.prompt)
-  for p in args.tools.glob("*.jsonl"):
-    logger.info(f"Adding '{p.stem}' tools ...")
-    tasks.extend(map(job, utils.read_jsonl(p)))
-
-  werk = tqdm.gather(*tasks, desc="generating cases", unit="tool")
+  werk = tqdm.gather(*map(job, tools), desc="generating cases", unit="tool")
   asyncio.run(werk)
   logger.info("All done!")
 

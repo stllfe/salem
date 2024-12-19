@@ -1,4 +1,5 @@
 import inspect
+import re
 
 from collections.abc import Callable
 from typing import Any, Type, Union
@@ -7,6 +8,18 @@ from docstring_parser import parse
 
 
 NoneType: Type = type(None)
+
+
+def flatten(s: str) -> str:
+  s = s.replace("\n", " ")
+  return re.sub(r"\s+", " ", s)
+
+
+def docformat(doc: str) -> str:
+  for m in re.finditer(r"(^\s*(Args?|Examples?|Raises?|Returns?):\s*$)", doc, flags=re.MULTILINE):
+    doc = doc[: m.start()]
+    break
+  return flatten(doc.strip())
 
 
 def extract_type_info(annotation: Any) -> dict[str, Any]:
@@ -50,6 +63,7 @@ def extract_type_info(annotation: Any) -> dict[str, Any]:
   return {"type": "string"}
 
 
+# TODO: refactor and cleanup this function, looks messy
 def get_tool_schema(fn: Callable) -> dict[str, Any]:
   """Convert a Python function to a function calling compatible schema."""
 
@@ -79,7 +93,7 @@ def get_tool_schema(fn: Callable) -> dict[str, Any]:
       parsed_doc = parse(doc)
       for p in parsed_doc.params:
         if p.arg_name == name:
-          desc = p.description or ""
+          desc = flatten(p.description or "")
           break
 
     if required:
@@ -94,10 +108,12 @@ def get_tool_schema(fn: Callable) -> dict[str, Any]:
     parsed_doc = parse(doc)
     if parsed_doc.returns and parsed_doc.returns.description:
       returns_desc = parsed_doc.returns.description
+  returns_desc = flatten(returns_desc)
 
   return {
     "name": f"{module}.{fnname}",
-    "description": doc.split("\n")[0] if doc else "",
+    # used to be -> doc.split("\n")[0] if doc else ""
+    "description": docformat(doc.strip()),
     "parameters": parameters,
     "returns": returns_desc,
   }

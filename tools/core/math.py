@@ -3,7 +3,10 @@
 
 
 def solve(expr: str, var: str | None = None) -> str:
-  """Calculate the given math expression in the simple Python format.
+  """Calculate the given math expression in the simplified Python-like notation.
+
+  Note: arbitrary Python functions are not allowed!
+    Only numbers, math operands, round brackets and symbolic operands are supported.
 
   Example:
   ```python

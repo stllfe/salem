@@ -1,37 +1,68 @@
-system: You are an expert scenario designer for a Russian voice assistant's function calling dataset.
+system: You are an expert scenario designer for a Russian voice assistant's function calling dataset for LLM training.
 prompt: |-
-      You are given a tool for function calling LLM Agent:
-      Name: {{ name }}
-      Description: {{ description }}
-      Parameters: {{ parameters }}
+    You are given a tool for function calling LLM Agent.
+    The target usecase for this agent is to power a Voice Assistant within a smart speaker device.
+    Users of this device will chat with the voice assistant (VA) and ask it to perform some helpful tasks for them.
+    VA will handle the dialog and if it's possible (given the available tools at runtime) will assist the user by:
 
-      Task: Generate {{ num_cases }} diverse usage scenarios that cover:
-      - Typical use cases
-      - Edge cases
-      - Multi-hop reasoning scenarios
-      - Cases requiring clarification
-      - Different user communication styles (formal, casual, unclear)
-      - Ensure a mix of simple and complex queries
+    1. Calling a certain tool (or several tools) under-the-hood, sometimes notifying the user on that
+    2. Analyzing the tool's response and converting it into a natural speech answer to the user
 
-      Provide each scenario with:
-      - Brief context
-      - User's potential communication style
-      - Specific challenge or interesting aspect of the interaction
+    Some other notable constraints:
+    - VA should be able to decide on its own just from the conversation context which tools are applicable for the current user query if any.
+    - It's the VA's responsibility to infer the correct calling params from the natural conversation, ask the user for clarifications if they are needed to perform a correct call.
+    - ONLY VA is aware of the call details, stack traces, technical details, log, runtime state, internal monologue, etc.
+    - VA typically don't read aloud to the users any links, unique object identifiers (UID), logs and other technical stuff mentioned earlier.
+    - The User-VA communication is kept strictly within natural speech as if it would in human-human communication.
 
-      Output format:
-      1. Context: [...]
-      2. Communication Style: [casual, formal, unclear]
-      3. Interaction Complexity: [single-hop | multi-hop]
-      4. Specific Challenges: [...]
+    Here is the list of currently supported tools for your reference:
+    {{ dumps(tools) }}
 
-      Here is an example output for a hypothetical restaurant booking tool:
-      ```
-      1. Context: User recalls that he wanted to arrange a date with his girlfriend and asks to book a restaurant
-      2. User Communication Style: casual, unclear
-      3. Interaction Complexity: multi-hop
-      4. Specific Challenges: Need to clearify the time and location because two restaurants with a similar name are returned by the tool
-      ```
+    The current tool:
+    - Name: "{{ name }}"
+    - Description: "{{ description }}"
+    - Parameters:
+    ```json
+    {{ dumps(parameters) }}
+    ```
 
-      Separate each case with triple dash "---".
+    Task: Generate {{ num_cases }} diverse usage scenarios that cover:
+    - Typical use cases
+    - Edge cases
+    - Multi-hop reasoning scenarios
+    - Cases requiring clarification
+    - Different user communication styles (formal, casual, unclear)
+    - Ensure a mix of simple and complex queries
 
-      Please respond in {{ language }} language.
+    Provide each scenario with:
+    - Brief context
+    - User's potential communication style
+    - Specific challenge or interesting aspect of the interaction
+
+    Output format is list of JSON objects like this:
+    ```json
+    {
+        "context": [...]
+        "communication": [casual | formal | unclear]
+        "interaction": [single-hop | multi-hop]
+        "challenges": [...]
+    }
+    ```
+    Here is an example case output for a hypothetical restaurant booking tool:
+    ```json
+    {
+        "context": "User recalls that he wanted to arrange a date with his girlfriend and asks to book a restaurant"
+        "communication": "casual"
+        "interaction": "multi-hop"
+        "challenges": "Need to clearify the time and location because two restaurants with a similar name are returned by the tool"
+    }
+    ```
+
+    **!!! PLEASE READ BEFORE YOUR ANSWER AND ACCEPT THE FOLLOWING !!!**
+
+    USERS DON'T KNOW ANYTHING ABOUT THE EXACT TOOLS, THEIR IMPLEMENATION DETAILS, ARGUMENTS, THE EVENT IDENTIFIERS (UIDS) OR ANYTHING LIKE THAT.
+    USERS ONLY KNOW SOME OF THE VOICE ASSISTANT HIGH-LEVEL CAPABILITIES, LIKE AN ABILITY TO SET A TIMER, REMIND THEM OF STH OR SEARCH THE INTERNET, ETC.
+    ASSUME ONLY NATURAL CLOSE-TO-LIFE SCENARIOS WHERE USERS ARE NOT AWARE OF IMPLEMENTATION DETAILS AND THE FUNCTION CALLING RUNTIME.
+    USERS JUST TALK TO THE LLM AGENT (VOICE ASSISTANT) AS TO AN INTELLIGENT AI ASSISTANT, AS IF IT IS ANOTHER HUMAN.
+
+    Please respond in {{ language }} language.
