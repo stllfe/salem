@@ -73,7 +73,7 @@ def edit_event(uid: str, date: str | None = None, time: str | None = None, comme
   """
 
   e = rt.calendar.get_event(uid)
-  old_date, old_time = e.date.strftime(ISO8061).split()
+  old_date, old_time = e.date.isoformat(" ").split()
   date = datetime.fromisoformat(f"{date or old_date}T{time or old_time}")
   rt.calendar.edit_event(uid, date=date, comment=comment)
   return f"Updated: {get_event(uid)}"
