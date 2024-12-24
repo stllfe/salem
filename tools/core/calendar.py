@@ -72,8 +72,9 @@ def edit_event(uid: str, date: str | None = None, time: str | None = None, comme
     A string status of the event update
   """
 
-  old = rt.calendar.get_event(uid)
-  date = datetime.fromisoformat(f"{date or old.date}T{time or old.time}")
+  e = rt.calendar.get_event(uid)
+  old_date, old_time = e.date.strftime(ISO8061).split()
+  date = datetime.fromisoformat(f"{date or old_date}T{time or old_time}")
   rt.calendar.edit_event(uid, date=date, comment=comment)
   return f"Updated: {get_event(uid)}"
 
@@ -95,7 +96,7 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
   if end < start:
     raise ValueError("'end' date should be later then 'start'")
   if events := rt.calendar.get_all_events(start, end, regex):
-    return "Events:\n" + "- ".join([_format_event(e) + "\n" for e in events] + [""])
+    return "Events:\n- " + "- ".join([_format_event(e) + "\n" for e in events])
   return "No events found for the given query."
 
 
