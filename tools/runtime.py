@@ -10,12 +10,27 @@ from zoneinfo import ZoneInfo
 from attrs import define
 from mako.template import Template
 
+from tools.core.backend import CalendarBackend
+from tools.core.backend import JsonBasedCalendar
+
+
+ISO8061_DATE = "%Y-%m-%d"
+ISO8061_TIME = "%H:%M:%S"
+ISO8061 = f"{ISO8061_DATE} {ISO8061_TIME}"
+
+Callback = Callable[..., None]
+
 
 @define
 class Runtime:
   timezone: str
   location: str
   language: str
+
+  # actual implementations
+  # TODO: add support for proper dependency injection, using punc or something similar
+  calendar: CalendarBackend
+  on_event: Callback | None = None
 
   @cached_property
   def tz(self) -> ZoneInfo:
@@ -25,13 +40,13 @@ class Runtime:
   def date(self) -> str:
     """Returns a current date as a simple separated ISO8601 string <YYYY-MM-DD> (always local timezone)."""
 
-    return datetime.now(self.tz).strftime("%Y-%m-%d")
+    return datetime.now(self.tz).strftime(ISO8061_DATE)
 
   @property
   def time(self) -> str:
     """Returns only a current time as an ISO8601 compatible <hours:minutes:seconds> (always local timezone)."""
 
-    return datetime.now(self.tz).strftime("%H:%M:%S")
+    return datetime.now(self.tz).strftime(ISO8061_TIME)
 
   @property
   def datetime(self) -> str:
@@ -94,4 +109,9 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   return fn(**kws)
 
 
-DEFAULT = Runtime("Europe/Moscow", "Moscow", "ru")
+rt = Runtime(
+  timezone="Europe/Moscow",
+  location="Moscow",
+  language="ru",
+  calendar=JsonBasedCalendar.from_path("~/.rt/calendar.json"),
+)

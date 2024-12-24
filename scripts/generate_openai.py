@@ -5,6 +5,7 @@ import enum
 
 from contextlib import nullcontext
 from pathlib import Path
+from typing import Any
 
 import orjson
 
@@ -72,7 +73,7 @@ class ConvosArgs(BaseArgs):
   prompt: Path = PROMPTS / "convos.yaml"
 
 
-async def append_jsonl(r: dict[str, str], f: Path, *, lock: asyncio.Lock | None = None) -> None:
+async def append_jsonl(r: dict[str, Any], f: Path, *, lock: asyncio.Lock | None = None) -> None:
   json = orjson.dumps(r).decode()
   lock = lock or nullcontext()
   async with lock:
