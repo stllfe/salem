@@ -4,7 +4,6 @@ import re
 from collections.abc import Callable
 from types import ModuleType
 from typing import Any, Type, Union
-from uuid import uuid4
 
 from docstring_parser import parse
 
