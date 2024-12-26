@@ -117,5 +117,5 @@ rt = Runtime(
   timezone="Europe/Moscow",
   location="Moscow",
   language="ru",
-  calendar=JsonBasedCalendar.from_path(Path(".rt/calendar.json").expanduser()),
+  calendar=JsonBasedCalendar.from_path(Path(".rt/calendar.json")),
 )

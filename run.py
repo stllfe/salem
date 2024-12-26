@@ -22,6 +22,7 @@ from tools.utils import get_tool_schema
 MODULES: list[ModuleType] = [
   core.calendar,
   # TODO: implement and add more here
+  # ...
 ]
 TOOLS: dict[str, Callable] = {get_func_name(fn): fn for m in MODULES for fn in get_public_functions(m)}
 SCHEMAS: list[dict] = [get_tool_schema(fn, openai=True) for m in MODULES for fn in get_public_functions(m)]
@@ -88,7 +89,7 @@ api = openai.APIArgs()
 llm = openai.get_client(api)
 
 
-async def loop() -> None:
+async def chat() -> None:
   system = get_system_prompt()
   print(f"SYSTEM:\n{system}")
 
@@ -99,19 +100,23 @@ async def loop() -> None:
     if messages[-1]["role"] != "tool":
       user = input("$> ")
       messages.append({"role": "user", "content": user})
-    assistant = await openai.generate(messages, llm, api=api, gen=gen, tools=SCHEMAS)
-    if isinstance(assistant, str):
-      print(assistant)
-      messages.append({"role": "assistant", "content": assistant})
+    answer = await openai.generate(messages, llm, api=api, gen=gen, tools=SCHEMAS)
+    if isinstance(answer, str):
+      print(answer)
+      messages.append({"role": "assistant", "content": answer})
       continue
-    if assistant.message:
-      print(assistant.message)
-      messages.append({"role": "assistant", "content": assistant.message})
-    logger.debug(f"Calling {assistant.name!r} with args {assistant.args} ...")
-    fn = TOOLS[assistant.name]
-    result = call(fn, rt, **assistant.args)
+    fncall = answer
+    if fncall.message:
+      print(fncall.message)
+      messages.append({"role": "assistant", "content": fncall.message})
+    logger.debug(f"Calling {fncall.name!r} with args {fncall.args} ...")
+    fn = TOOLS[fncall.name]
+    result = call(fn, rt, **fncall.args)
     logger.debug(f"Function call result: {result!r}")
-    messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": assistant.id})
+    messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": fncall.id})
 
 
-asyncio.run(loop())
+if __name__ == "__main__":
+  import asyncio
+
+  asyncio.run(chat())
