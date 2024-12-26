@@ -1,4 +1,5 @@
 from collections import defaultdict
+from uuid import uuid4
 
 import loguru
 
@@ -30,3 +31,8 @@ def get_logger() -> "loguru.Logger":
   logger.remove()
   logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True, format=_LOGGER_FORMAT, filter=_log_filter)
   return logger
+
+
+def get_short_uid() -> str:
+  uuid = uuid4()
+  return uuid.hex[:6]

@@ -7,7 +7,6 @@ from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Self
-from uuid import uuid4
 
 import orjson
 
@@ -19,10 +18,7 @@ from tinydb import JSONStorage
 from tinydb import Query
 from tinydb import TinyDB
 
-
-def get_short_uid() -> str:
-  uuid = uuid4()
-  return uuid.hex[:6]
+from src.utils import get_short_uid
 
 
 def convert_datetime(dt: datetime | str) -> datetime:
@@ -129,7 +125,7 @@ class JsonBasedCalendar(CalendarBackend):
     return cls(TinyDB(storage=JSONStorage, path=path.as_posix(), encoding="utf-8", cls=DateTimeEncoder))
 
   def add_event(self, event: Event) -> str:
-    self._events.insert(event.to_dict())
+    self._events.insert(event.dump())
     return event.uid
 
   def get_event(self, uid: str) -> Event:

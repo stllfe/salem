@@ -2,7 +2,9 @@ import inspect
 import re
 
 from collections.abc import Callable
+from types import ModuleType
 from typing import Any, Type, Union
+from uuid import uuid4
 
 from docstring_parser import parse
 
@@ -63,15 +65,18 @@ def extract_type_info(annotation: Any) -> dict[str, Any]:
   return {"type": "string"}
 
 
+def get_func_name(fn: Callable) -> str:
+  fnname = fn.__name__.strip()
+  module = fn.__module__.split(".")[-1]
+  return f"{module}.{fnname}"
+
+
 # TODO: refactor and cleanup this function, looks messy
-def get_tool_schema(fn: Callable) -> dict[str, Any]:
+def get_tool_schema(fn: Callable, *, openai: bool = False) -> dict[str, Any]:
   """Convert a Python function to a function calling compatible schema."""
 
   sig = inspect.signature(fn)
   doc = inspect.getdoc(fn) or ""
-
-  fnname = fn.__name__
-  module = fn.__module__.split(".")[-1]
 
   parameters = {"type": "object", "properties": {}, "required": []}
 
@@ -110,10 +115,24 @@ def get_tool_schema(fn: Callable) -> dict[str, Any]:
       returns_desc = parsed_doc.returns.description
   returns_desc = flatten(returns_desc)
 
-  return {
-    "name": f"{module}.{fnname}",
-    # used to be -> doc.split("\n")[0] if doc else ""
-    "description": docformat(doc.strip()),
+  schema = {
+    "name": get_func_name(fn),
+    "description": docformat(doc.strip()),  # used to be -> doc.split("\n")[0] if doc else ""
     "parameters": parameters,
-    "returns": returns_desc,
   }
+  if not openai:
+    schema.update(returns=returns_desc)
+    return schema
+
+  schema = {"type": "function", "function": schema}
+  return schema
+
+
+def get_public_functions(module: ModuleType) -> list[Callable]:
+  def include(name: str) -> bool:
+    if name.startswith("_"):
+      return False
+    member = getattr(module, name)
+    return inspect.isfunction(member) and member.__module__ == module.__name__
+
+  return [getattr(module, name) for name in dir(module) if include(name)]

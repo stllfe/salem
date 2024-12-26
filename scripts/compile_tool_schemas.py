@@ -1,24 +1,17 @@
 import importlib.util
-import inspect
 import json
 import sys
 
 from pathlib import Path
 from types import ModuleType
 
+from tools.utils import get_public_functions
 from tools.utils import get_tool_schema
 
 
 ROOT = Path(__file__).parent.parent
 CORE = ROOT.joinpath("tools").joinpath("core")
 DEST = ROOT.joinpath("data").joinpath("tools")
-
-
-def include(module: ModuleType, name: str) -> bool:
-  if name.startswith("_"):
-    return False
-  member = getattr(module, name)
-  return inspect.isfunction(member) and member.__module__ == module.__name__
 
 
 def load_module(mpath: Path) -> ModuleType:
@@ -29,7 +22,7 @@ def load_module(mpath: Path) -> ModuleType:
 
 
 def module_to_jsonl(module: ModuleType, fpath: Path) -> None:
-  functions = [getattr(module, name) for name in dir(module) if include(module, name)]
+  functions = get_public_functions(module)
   schemas = [get_tool_schema(fn) for fn in functions]
 
   if not schemas:

@@ -4,6 +4,7 @@ import inspect
 from collections.abc import Callable
 from datetime import datetime
 from functools import cached_property
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -77,9 +78,7 @@ class CURRENT(enum.StrEnum):
     return _get_current_var_name(self.name)
 
 
-def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
-  """Runs the given tool function, interpolating context variables from the runtime."""
-
+def resolve(val: str) -> str:
   env_map = {
     CURRENT.TIME: rt.time,
     CURRENT.DATE: rt.date,
@@ -87,8 +86,13 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
     CURRENT.LOCATION: rt.location,
     CURRENT.LANGUAGE: rt.language,
   }
-
   ctx = {e.alias: v for e, v in env_map.items()}
+  return Template(val).render(**ctx)
+
+
+def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
+  """Runs the given tool function, interpolating context variables from the runtime."""
+
   sig = inspect.signature(fn)
   kws = {}
 
@@ -99,7 +103,7 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
     # if the value is a string, attempt to render it as a Mako template
     if isinstance(val, str):
       try:
-        kws[key] = Template(val).render(**ctx)
+        kws[key] = resolve(val)
       except Exception:
         kws[key] = val
     else:
@@ -113,5 +117,5 @@ rt = Runtime(
   timezone="Europe/Moscow",
   location="Moscow",
   language="ru",
-  calendar=JsonBasedCalendar.from_path("~/.rt/calendar.json"),
+  calendar=JsonBasedCalendar.from_path(Path(".rt/calendar.json").expanduser()),
 )
