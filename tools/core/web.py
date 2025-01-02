@@ -34,7 +34,7 @@ def get_page_content(url: str) -> str:
   """
 
 
-# use-case for the Standford's WikiChat:
+# use-case for the Stanford's WikiChat:
 # https://search.genie.stanford.edu/redoc
 def search_wiki(query: str, k: int = 5, language: Language = CURRENT.LANGUAGE) -> list[dict[str, str]]:
   """Get top K search results from Wikipedia for the given query.
