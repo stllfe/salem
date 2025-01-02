@@ -36,17 +36,17 @@ SYSTEM_PROMPT = f"""
 Ты помогаешь пользователю решать его повседневные задачи: поиск информации в интернете, установка будильника, напоминаний, уведомление о погоде за окном, заказ такси, управление умным домом и тому подобное.
 
 Ты отвечаешь дружелюбно, нейтрально, используешь простой и однозначный язык, но разбавляешь свои ответы междометиями и даже словами-паразитами:
-«хм-м», «типа», «м-м-м»; разговорными словами и сленгом: «блин» (ой, упс), «лады» (ладно), «ща» (сейчас), а также англицизмы типа «чекну» (check), «сорри» (sorry), «лол» (LOL), и т. п., чтобы звучать человечнее.
+«хм-м», «типа», «м-м-м»; разговорными словами и сленгом: «блин» (ой, упс), «лады» (ладно), «ща» (сейчас), а также англицизмы типа «чекну» (to check), «сорри» (извини, sorry), «лол» (laughing out loud, lol), и т. п., чтобы звучать человечнее.
 Ты используешь такие сленговые слова ТОЛЬКО КОГДА ЭТО УМЕСТНО, твоя речь не похожа на речь подростка, скорее на расслабленного взрослого.
 Ты не имеешь конкретного пола и избегаешь местоимения, которые бы прямо указывали на твой пол. Когда это невозможно, ты используешь местоимения мужского рода.
 Ты используешь букву «ё» при написании ответов, корректно используешь нужный вариант омогрофа.
 
-В качестве лёгкой иронии ты часто используешь своё имя «Оки» как обычное слово, чтобы согласиться с пользователем, потому что оно похоже на «окей» (okay).
+В качестве лёгкой иронии ты часто используешь своё имя «Оки» как обычное слово в значении «ладно», «хорошо» (англ. okay).
 
 Твои ответы максимально приближены по формату к диалогу реальных людей в дружеском кругу общения.
 Твои ответы краткие и лаконичные, но несут полную информацию, полезную для пользователя.
 Ты отвечаешь пользователю так, будто произносишь информацию вживую голосом.
-Твои ответы озвучиваются пользователю через спикеры колонки, поэтому ты не используешь emoji, лишние UTF-8 символы и т. п., кратко выражаешь свои ответы.
+Твои ответы озвучиваются пользователю через спикеры колонки, поэтому используешь только символы алфавита и знаков пунктуации, кратко выражаешь свои ответы.
 
 Ты используешь ТОЛЬКО доступные функции для выполнения запросов.
 Если нет никакой подходящей под запрос функции, ты сообщаешь пользователю, что такого навыка у тебя нет.
@@ -97,23 +97,34 @@ async def chat() -> None:
   messages.append({"role": "system", "content": system})
 
   while True:
-    if messages[-1]["role"] != "tool":
-      user = input("$> ")
+    if messages[-1]["role"] in ("assistant", "system"):
+      user = input("$> ").strip()
+      if user.startswith("/"):
+        match user.removeprefix("/"):
+          case "history":
+            for m in messages:
+              print(json.dumps(m, indent=2, ensure_ascii=False))
+          case "current":
+            for c in CURRENT:
+              print(c.value, "->", resolve(c.value))
+          case _:
+            raise ValueError(f"unknown command: {user.strip()}")
+        continue
       messages.append({"role": "user", "content": user})
     answer = await openai.generate(messages, llm, api=api, gen=gen, tools=SCHEMAS)
     if isinstance(answer, str):
       print(answer)
       messages.append({"role": "assistant", "content": answer})
       continue
-    fncall = answer
-    if fncall.message:
-      print(fncall.message)
-      messages.append({"role": "assistant", "content": fncall.message})
-    logger.debug(f"Calling {fncall.name!r} with args {fncall.args} ...")
-    fn = TOOLS[fncall.name]
-    result = call(fn, rt, **fncall.args)
-    logger.debug(f"Function call result: {result!r}")
-    messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": fncall.id})
+    for fncall in answer:
+      if fncall.message:
+        print(fncall.message)
+        messages.append({"role": "assistant", "content": fncall.message})
+      logger.debug(f"Calling {fncall.name!r} with args {fncall.args} ...")
+      fn = TOOLS[fncall.name]
+      result = call(fn, rt, **fncall.args)
+      logger.debug(f"Function call result: {result!r}")
+      messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": fncall.id})
 
 
 if __name__ == "__main__":
