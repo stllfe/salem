@@ -53,7 +53,7 @@ def get_fn_call_from_message(message: str) -> Iterable[FunctionCall]:
       logger.error(f"Error while decoding a tool call: {err}")
       continue
     msg = TOOL_REGEX.sub("", message).strip()
-    yield FunctionCall(id=get_short_uid(), name=d["name"], args=d["args"], message=msg or None)
+    yield FunctionCall(id=get_short_uid(), name=d["name"], args=d["arguments"], message=msg or None)
 
 
 def get_fn_call_from_client(message: ChatCompletionMessage) -> Iterable[FunctionCall]:
@@ -107,9 +107,9 @@ async def generate(
   logger.debug(f"Returned choice:\n{result}")
   if not tools:
     return result.message.content
-  if calls := list(filter(bool, get_fn_call_from_client(result.message))):
+  if calls := list(get_fn_call_from_client(result.message)):
     return calls
-  if list(filter(bool, get_fn_call_from_message(result.message.content))):
+  if calls := list(get_fn_call_from_message(result.message.content)):
     logger.warning("Tool call found inside the message, the parsing maybe incorrect!")
     return calls
   return result.message.content
