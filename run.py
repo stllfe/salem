@@ -1,11 +1,16 @@
 import asyncio
 import json
+import os
 
 from collections.abc import Callable
 from inspect import cleandoc
 from types import ModuleType
 
+from dotenv import load_dotenv
 from loguru import logger
+
+
+load_dotenv(".env")
 
 from src.datagen import config
 from src.datagen import openai
@@ -18,46 +23,52 @@ from tools.utils import get_public_functions
 from tools.utils import get_tool_schema
 
 
-MODULES: list[ModuleType] = [
+MODEL: str = config.MODEL
+OPENAI_FORMAT: bool = bool(int(os.getenv("OPENAI_FORMAT", "1")))
+
+USED_MODULES: list[ModuleType] = [
   core.calendar,
   # TODO: implement and add more here
   # ...
 ]
-TOOLS: dict[str, Callable] = {}
-SCHEMAS: list[dict] = []
+TOOL_REGISTRY: dict[str, Callable] = {}
+TOOL_SCHEMAS: list[dict] = []
 
-for m in MODULES:
-  for fn in get_public_functions(m):
-    schema = get_tool_schema(fn, openai=True)
-    TOOLS[schema["function"]["name"]] = fn
-    SCHEMAS.append(schema)
+for module in USED_MODULES:
+  for fn in get_public_functions(module):
+    schema = get_tool_schema(fn, openai=OPENAI_FORMAT)
+    name = schema["function"]["name"] if OPENAI_FORMAT else schema["name"]
+    TOOL_REGISTRY[name] = fn
+    TOOL_SCHEMAS.append(schema)
 
-TOOLS_STRING = "\n".join(json.dumps(s, indent=None, ensure_ascii=False) for s in SCHEMAS)
+TOOLS_STRING = "\n".join(json.dumps(s, indent=None, ensure_ascii=False) for s in TOOL_SCHEMAS)
+
 
 SYSTEM_PROMPT = f"""
 <%text>
 ## YOUR IDENTITY
-</%text>
-Ты — умный голосовой ассистент по имени «Оки», AI-помощник, который установлен внутри «умной колонки».
-Ты помогаешь пользователю решать его повседневные задачи: поиск информации в интернете, установка будильника, напоминаний, уведомление о погоде за окном, заказ такси, управление умным домом и тому подобное.
+
+Ты — умный голосовой ассистент по имени «Салем» (Salem), AI-помощник, который установлен внутри «умной» колонки.
+С помощью голосового управления ты помогаешь пользователю решать его повседневные задачи: поиск информации в интернете, установка будильника, напоминаний, уведомление о погоде за окном, заказ такси, управление умным домом и тому подобное.
 
 Ты отвечаешь дружелюбно, нейтрально, используешь простой и однозначный язык, но разбавляешь свои ответы междометиями и даже словами-паразитами:
-«хм-м», «типа», «м-м-м»; разговорными словами и сленгом: «блин» (ой, упс), «лады» (ладно), «ща» (сейчас), а также англицизмы типа «чекну» (to check), «сорри» (извини, sorry), «лол» (laughing out loud, lol), и т. п., чтобы звучать человечнее.
-Ты используешь такие сленговые слова ТОЛЬКО КОГДА ЭТО УМЕСТНО, твоя речь не похожа на речь подростка, скорее на расслабленного взрослого.
-Ты не имеешь конкретного пола и избегаешь местоимения, которые бы прямо указывали на твой пол. Когда это невозможно, ты используешь местоимения мужского рода.
-Ты используешь букву «ё» при написании ответов, корректно используешь нужный вариант омогрофа.
-
-В качестве лёгкой иронии ты часто используешь своё имя «Оки» как обычное слово в значении «ладно», «хорошо» (англ. okay).
+«хм-м», «типа», «м-м-м»; разговорными словами и сленгом: «блин», «ой», «упс», «лады» (ладно), «ща» (сейчас), а также англицизмы типа «чекну» (to check), «оки» или «окей» (англ. okay), «сорри» (прости, от англ. sorry), «лол» (от англ. laughing out loud, lol), и т. п., чтобы звучать человечнее.
+Ты используешь сленговые слова ТОЛЬКО КОГДА ЭТО УМЕСТНО, твоя соответствует речи взрослого индивида, расслабленного взрослого, а не подростка.
+Ты не имеешь конкретного пола и избегаешь местоимения, которые бы прямо указывали на него. Когда это невозможно, ты используешь местоимения мужского рода.
+Ты используешь букву «ё» при выводе ответов на русском, корректно используя нужный вариант омогрофа.
 
 Твои ответы максимально приближены по формату к диалогу реальных людей в дружеском кругу общения.
 Твои ответы краткие и лаконичные, но несут полную информацию, полезную для пользователя.
-Ты отвечаешь пользователю так, будто произносишь информацию вживую голосом.
-Твои ответы озвучиваются пользователю через спикеры колонки, поэтому используешь только символы алфавита и знаков пунктуации, кратко выражаешь свои ответы.
+Ты отвечаешь пользователю так, как произносишь информацию вживую голосом.
+Твои ответы озвучиваются пользователю через спикеры колонки, поэтому кратко выражаешь свои ответы, а в тексте используешь только символы алфавита, знаков пунктуации, которые моно однозначно озвучить.
 
+Для удовлетворения пользовательских запросов ты используешь подключенные функции (function calling), которые в диалоге с пользователем называются «навыками» или «умениями».
 Ты используешь ТОЛЬКО доступные функции для выполнения запросов.
-Если нет никакой подходящей под запрос функции, ты сообщаешь пользователю, что такого навыка у тебя нет.
+Если нет никакой подходящей под запрос функции, ты сообщаешь пользователю, что такого «навыка» у тебя нет.
 Если намерение пользователя неоднозначно, ты задаёшь уточняющие вопросы, чтобы корректно вызвать нужную функцию с полными аргументами.
-
+Ты НЕ делаешь предположений за пользователя о значениях аргументов, которые прямо не следуют из контекста диалога или системного сообщения.
+</%text>
+---
 <%text>
 ## SYSTEM STATUS
 </%text>
@@ -74,22 +85,22 @@ Current location: {CURRENT.LOCATION}
 {TOOLS_STRING}
 </tools>
 
-For each function call, return a JSON object with function name and arguments within <CALL></CALL> XML-like tags:
+For each function call, return a JSON object with function name and arguments within <tool_call></tool_call> XML-like tags:
 ```
-<CALL>
+<tool_call>
 {{"name": <function-name>, "arguments": <args-json-object>}}
-</CALL>
+</tool_call>
 ```
 
 For example, calling a function named "myfunc1" with an "arg1" (according to function schema specified in the system prompt):
 ```
-<CALL>
+<tool_call>
 {{"name": "myfunc1", "arguments": {{"arg1": 2}}}}
-</CALL>
+</tool_call>
 ```
 
-Multiple tool calls should be wrapped each with its own pair of <CALL></CALL> XML-like tags.
-You ONLY mark tool calls with the <CALL> and </CALL> XML-like tags.
+Multiple tool calls should be wrapped each with its own pair of <tool_call></tool_call> XML-like tags.
+You ONLY mark tool calls with the <tool_call> and </tool_call> XML-like tags.
 """  # noqa: E501
 
 DYNAMIC_VARIABLES_HINT = f"""
@@ -102,13 +113,16 @@ def get_system_prompt() -> str:
   return cleandoc(f"{resolve(SYSTEM_PROMPT)}\n{DYNAMIC_VARIABLES_HINT}")
 
 
-gen = config.get_default_generation()
-# api = openai.APIArgs(
-#   model="gpt-4o",
-#   base_url="https://api.openai.com/v1",
-#   key=os.getenv("OPENAI_API_KEY"),
-# )
-api = openai.APIArgs()
+if OPENAI_FORMAT and MODEL.startswith("gpt"):
+  api = openai.APIArgs(
+    model=MODEL.strip(),
+    base_url="https://api.openai.com/v1",
+    key=os.getenv("OPENAI_API_KEY"),
+  )
+else:
+  api = openai.APIArgs()
+
+gen = config.get_default_generation(MODEL)
 llm = openai.get_client(api)
 
 
@@ -116,7 +130,10 @@ async def chat() -> None:
   system = get_system_prompt()
   print(f"SYSTEM:\n{system}")
 
-  messages: list[dict[str]] = []
+  logger.info(f"Loaded {len(TOOL_REGISTRY)} tools from {len(USED_MODULES)} connected modules.")
+  logger.info(f"Model: {MODEL} | OpenAI format: {OPENAI_FORMAT} | API URL: {api.base_url}")
+
+  messages: list[dict[str, str | dict]] = []
   messages.append({"role": "system", "content": system})
 
   while True:
@@ -134,20 +151,38 @@ async def chat() -> None:
             raise ValueError(f"unknown command: {user.strip()}")
         continue
       messages.append({"role": "user", "content": user})
-    answer = await openai.generate(messages, llm, api=api, gen=gen, tools=SCHEMAS)
+    answer = await openai.generate(messages, llm, api=api, gen=gen, tools=TOOL_SCHEMAS)
     if isinstance(answer, str):
-      print(answer)
+      print("A:", answer)
       messages.append({"role": "assistant", "content": answer})
       continue
-    for fncall in answer:
-      if fncall.message:
-        print(fncall.message)
-        messages.append({"role": "assistant", "content": fncall.message})
-      logger.info(f"Calling {fncall.name!r} with args {fncall.args} ...")
-      fn = TOOLS[fncall.name]
-      result = call(fn, runtime, **fncall.args)
+    answer, calls = answer
+    if not answer and not calls:
+      logger.warning("No response from assistant!")
+      messages.append({
+        "role": "system",
+        "name": "status",
+        "content": "Error: no function calls or answer was generated!",
+      })
+      continue
+    print("A:", answer)
+    response = {"role": "assistant", "content": answer}
+    if calls:
+      response.update(tool_calls=[c.dump() for c in calls])
+    messages.append(response)
+    for c in calls:
+      logger.info(f"Calling {c.name!r} with args {c.args} ...")
+      fn = TOOL_REGISTRY[c.name]
+      result = call(fn, runtime, **c.args)
       logger.info(f"Function call result:\n{result}")
-      messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": fncall.id})
+      if not isinstance(result, str):
+        result = json.dumps(result, ensure_ascii=False, indent=2)
+      messages.append({
+        "role": "tool",
+        "name": c.name,
+        "content": result,
+        "tool_call_id": c.id,
+      })
 
 
 if __name__ == "__main__":

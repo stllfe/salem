@@ -6,21 +6,23 @@ from typing import Any, Iterable
 import orjson
 
 from attrs import define
-from loguru import logger
 from openai import APIError
 from openai import AsyncClient
-from openai.types.chat import ChatCompletionMessage
+from openai.types.chat import ChatCompletionMessageToolCall
 from tenacity import retry
 from tenacity import stop_after_attempt
 
 from src.datagen.types import GenerationArgs
+from src.utils import get_logger
 from src.utils import get_short_uid
 
+
+logger = get_logger()
 
 MAX_TRIES = int(getenv("MAX_TRIES", "3"))
 DECODING_BACKEND = getenv("DECODING_BACKEND", "outlines")
 TOOL_REGEX = re.compile(
-  r"<(tool(_call|_response)?s?|CALL)>\s*(?P<content>.*?)\s*(?:</(tool(_call|_response)?s?|CALL)>|(?=<(tool(_call|_response)?s?|CALL)>)|$)",
+  r"<tool(_call|_response)?s?>\s*(?P<content>.*?)\s*(?:</tool(_call|_response)?s?>|(?=<tool(_call|_response)?s?>)|$)",
   flags=re.MULTILINE | re.DOTALL,
 )
 
@@ -38,7 +40,13 @@ class FunctionCall:
   id: str
   name: str
   args: dict[str, Any]
-  message: str | None
+
+  def dump(self) -> dict[str, str]:
+    return {
+      "id": self.id,
+      "type": "function",
+      "function": {"arguments": orjson.dumps(self.args).decode("utf-8"), "name": self.name},
+    }
 
 
 def get_client(api: APIArgs) -> AsyncClient:
@@ -54,22 +62,23 @@ def get_fn_call_from_message(message: str) -> Iterable[FunctionCall]:
     except orjson.JSONDecodeError as err:
       logger.error(f"Error while decoding a tool call: {err} -> {c!r}")
       continue
-    msg = TOOL_REGEX.sub("", message).strip()
-    yield FunctionCall(id=get_short_uid(), name=d["name"], args=d["arguments"], message=msg or None)
+    yield FunctionCall(id=get_short_uid(8), name=d["name"], args=d["arguments"])
 
 
-def get_fn_call_from_client(message: ChatCompletionMessage) -> Iterable[FunctionCall]:
-  if not message.tool_calls:
+def remove_fn_call_from_message(message: str) -> str:
+  return TOOL_REGEX.sub("", message)
+
+
+def get_fn_call_from_openai(tool_calls: list[ChatCompletionMessageToolCall]) -> Iterable[FunctionCall]:
+  if not tool_calls:
     return
-  msg = message.content
-  for call in message.tool_calls:
+  for call in tool_calls:
     try:
       args = orjson.loads(call.function.arguments)
     except orjson.JSONDecodeError as err:
       logger.error(f"Error while decoding a tool call: {err}")
       continue
-    yield FunctionCall(id=call.id, name=call.function.name, args=args, message=msg or None)
-    msg = None
+    yield FunctionCall(id=call.id, name=call.function.name, args=args)
 
 
 @logger.catch(APIError)
@@ -82,11 +91,11 @@ async def generate(
   api: APIArgs,
   json_schema: dict | None = None,
   tools: list[str] | None = None,
-) -> str | list[FunctionCall]:
+) -> str | tuple[str, list[FunctionCall]]:
   extra = {}
   is_openai_call = "api.openai.com" in api.base_url
   if is_openai_call:
-    logger.warning("OpenAI endpoint detected, ommiting extra generation params!")
+    logger.warning("OpenAI endpoint detected, ommiting extra generation params!", once=True)
   else:
     extra.update(
       top_k=gen.top_k,
@@ -112,11 +121,13 @@ async def generate(
   )
   result = response.choices[0]
   logger.debug(f"Returned choice:\n{result}")
+
+  message = result.message.content
   if not tools:
-    return result.message.content
-  if calls := list(get_fn_call_from_client(result.message)):
-    return calls
-  if calls := list(get_fn_call_from_message(result.message.content)):
+    return message
+  if calls := list(get_fn_call_from_openai(result.message.tool_calls)):
+    return message, calls
+  if calls := list(get_fn_call_from_message(message)):
     logger.warning("Tool call found inside the message, the parsing maybe incorrect!")
-    return calls
-  return result.message.content
+    return remove_fn_call_from_message(message), calls
+  return message, []
