@@ -1,11 +1,16 @@
 # noqa: A005
 from datetime import datetime
 
+from tools.core.backend import CalendarBackend
 from tools.core.backend import Event
 from tools.core.backend import Reminder
 from tools.runtime import CURRENT
 from tools.runtime import ISO8061
-from tools.runtime import rt
+from tools.runtime import backends
+from tools.runtime import runtime
+
+
+calendar: CalendarBackend = backends.resolve(CalendarBackend)
 
 
 def _format_event(e: Event) -> str:
@@ -29,9 +34,9 @@ def add_event(name: str, date: str, time: str, comment: str | None = None) -> st
     A uid of the added event
   """
 
-  date = datetime.fromisoformat(f"{date}T{time}").astimezone(rt.tz)
-  e = Event(name=name, date=date, comment=comment, timezone=rt.timezone)
-  return rt.calendar.add_event(e)
+  date = datetime.fromisoformat(f"{date}T{time}").astimezone(runtime.tz)
+  e = Event(name=name, date=date, comment=comment, timezone=runtime.timezone)
+  return calendar.add_event(e)
 
 
 def get_event(uid: str) -> str:
@@ -41,7 +46,7 @@ def get_event(uid: str) -> str:
     KeyError: If no events found by the given uid
   """
 
-  e = rt.calendar.get_event(uid)
+  e = calendar.get_event(uid)
   return _format_event(e)
 
 
@@ -55,7 +60,7 @@ def remove_event(uid: str) -> str:
     A string status of the event removal
   """
 
-  rt.calendar.remove_event(uid)
+  calendar.remove_event(uid)
   return f"Event [{uid}] removed."
 
 
@@ -72,10 +77,10 @@ def edit_event(uid: str, date: str | None = None, time: str | None = None, comme
     A string status of the event update
   """
 
-  e = rt.calendar.get_event(uid)
+  e = calendar.get_event(uid)
   old_date, old_time = e.date.isoformat(" ").split()
   date = datetime.fromisoformat(f"{date or old_date}T{time or old_time}")
-  rt.calendar.edit_event(uid, date=date, comment=comment)
+  calendar.edit_event(uid, date=date, comment=comment)
   return f"Updated: {get_event(uid)}"
 
 
@@ -91,11 +96,11 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
     A string result of events search
   """
 
-  start = datetime.fromisoformat(start).astimezone(rt.tz)
-  end = datetime.fromisoformat(end).astimezone(rt.tz)
+  start = datetime.fromisoformat(start).astimezone(runtime.tz)
+  end = datetime.fromisoformat(end).astimezone(runtime.tz)
   if end < start:
     raise ValueError("'end' date should be later then 'start'")
-  if events := rt.calendar.get_all_events(start, end, regex):
+  if events := calendar.get_all_events(start, end, regex):
     return "Events:\n- " + "- ".join([_format_event(e) + "\n" for e in events])
   return "No events found for the given query."
 
@@ -112,9 +117,9 @@ def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> str:
     A uid of the added reminder
   """
 
-  date = datetime.fromisoformat(f"{date}T{time}").astimezone(rt.tz)
-  r = Reminder(msg, date, timezone=rt.timezone)
-  return rt.calendar.add_reminder(r)
+  date = datetime.fromisoformat(f"{date}T{time}").astimezone(runtime.tz)
+  r = Reminder(msg, date, timezone=runtime.timezone)
+  return calendar.add_reminder(r)
 
 
 def remove_reminder(uid: str) -> str:
@@ -127,7 +132,7 @@ def remove_reminder(uid: str) -> str:
     A string status of the reminder removal
   """
 
-  rt.calendar.remove_event(uid)
+  calendar.remove_event(uid)
   return f"Reminder [{uid}] removed."
 
 
@@ -138,7 +143,7 @@ def get_reminder(uid: str) -> str:
     KeyError: If no reminders found by the given uid
   """
 
-  r = rt.calendar.get_reminder(uid)
+  r = calendar.get_reminder(uid)
   return _format_reminder(r)
 
 
@@ -146,6 +151,6 @@ def get_all_reminders(date: str = CURRENT.DATE) -> str:
   """Get all reminders on the given date in the user's calendar."""
 
   date = datetime.fromisoformat(date)
-  if reminders := rt.calendar.get_all_reminders(date):
+  if reminders := calendar.get_all_reminders(date):
     return "Reminders:\n- " + "- ".join([_format_reminder(r) + "\n" for r in reminders])
   return f"No reminders found @ {date.strftime(ISO8061)}"

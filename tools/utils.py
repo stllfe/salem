@@ -64,10 +64,10 @@ def extract_type_info(annotation: Any) -> dict[str, Any]:
   return {"type": "string"}
 
 
-def get_func_name(fn: Callable) -> str:
+def get_func_name(fn: Callable, sep: str = ".") -> str:
   fnname = fn.__name__.strip()
   module = fn.__module__.split(".")[-1]
-  return f"{module}.{fnname}"
+  return f"{module}{sep}{fnname}"
 
 
 # TODO: refactor and cleanup this function, looks messy
@@ -115,7 +115,7 @@ def get_tool_schema(fn: Callable, *, openai: bool = False) -> dict[str, Any]:
   returns_desc = flatten(returns_desc)
 
   schema = {
-    "name": get_func_name(fn),
+    "name": get_func_name(fn, sep="_" if openai else "."),
     "description": docformat(doc.strip()),  # used to be -> doc.split("\n")[0] if doc else ""
     "parameters": parameters,
   }

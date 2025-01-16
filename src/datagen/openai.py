@@ -20,7 +20,7 @@ from src.utils import get_short_uid
 MAX_TRIES = int(getenv("MAX_TRIES", "3"))
 DECODING_BACKEND = getenv("DECODING_BACKEND", "outlines")
 TOOL_REGEX = re.compile(
-  r"<tool_call>\s*(?P<content>.*?)\s*(?:</tool_call>|(?=<tool_call>)|$)",
+  r"<(tool(_call|_response)?s?|CALL)>\s*(?P<content>.*?)\s*(?:</(tool(_call|_response)?s?|CALL)>|(?=<(tool(_call|_response)?s?|CALL)>)|$)",
   flags=re.MULTILINE | re.DOTALL,
 )
 
@@ -47,10 +47,12 @@ def get_client(api: APIArgs) -> AsyncClient:
 
 def get_fn_call_from_message(message: str) -> Iterable[FunctionCall]:
   for m in TOOL_REGEX.finditer(message):
+    c = None
     try:
-      d = orjson.loads(m.group().strip())
+      c = m.group("content").strip()
+      d = orjson.loads(c)
     except orjson.JSONDecodeError as err:
-      logger.error(f"Error while decoding a tool call: {err}")
+      logger.error(f"Error while decoding a tool call: {err} -> {c!r}")
       continue
     msg = TOOL_REGEX.sub("", message).strip()
     yield FunctionCall(id=get_short_uid(), name=d["name"], args=d["arguments"], message=msg or None)
@@ -82,14 +84,19 @@ async def generate(
   tools: list[str] | None = None,
 ) -> str | list[FunctionCall]:
   extra = {}
-  extra.update(
-    top_k=gen.top_k,
-    min_p=gen.min_p,
-    min_tokens=gen.min_tokens,
-    repetition_penalty=gen.repetition_penalty,
-  )
-  if json_schema:
+  is_openai_call = "api.openai.com" in api.base_url
+  if is_openai_call:
+    logger.warning("OpenAI endpoint detected, ommiting extra generation params!")
+  else:
+    extra.update(
+      top_k=gen.top_k,
+      min_p=gen.min_p,
+      min_tokens=gen.min_tokens,
+      repetition_penalty=gen.repetition_penalty,
+    )
+  if json_schema and not is_openai_call:
     extra.update(guided_json=json_schema, guided_decoding_backend=DECODING_BACKEND)
+  # TODO: make adjustments for OpenAI API to utilize all the features possible
   response = await llm.chat.completions.create(
     messages=messages,
     model=api.model,

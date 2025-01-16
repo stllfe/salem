@@ -9,6 +9,7 @@ numpy==2.2.0
 openai==1.57.4
 orjson==3.10.12
 orjsonl==1.0.0
+punq==0.7.0
 pydantic==2.10.3
 tenacity==9.0.0
 tokenizers==0.21.0

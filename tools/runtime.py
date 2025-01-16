@@ -8,11 +8,13 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import punq
+
 from attrs import define
 from mako.template import Template
 
-from tools.core.backend import CalendarBackend
 from tools.core.backend import JsonBasedCalendar
+from tools.core.backend.calendar import CalendarBackend
 
 
 ISO8061_DATE = "%Y-%m-%d"
@@ -27,11 +29,6 @@ class Runtime:
   timezone: str
   location: str
   language: str
-
-  # actual implementations
-  # TODO: add support for proper dependency injection, using punc or something similar
-  calendar: CalendarBackend
-  on_event: Callback | None = None
 
   @cached_property
   def tz(self) -> ZoneInfo:
@@ -80,11 +77,11 @@ class CURRENT(enum.StrEnum):
 
 def resolve(val: str) -> str:
   env_map = {
-    CURRENT.TIME: rt.time,
-    CURRENT.DATE: rt.date,
-    CURRENT.DATETIME: rt.datetime,
-    CURRENT.LOCATION: rt.location,
-    CURRENT.LANGUAGE: rt.language,
+    CURRENT.TIME: runtime.time,
+    CURRENT.DATE: runtime.date,
+    CURRENT.DATETIME: runtime.datetime,
+    CURRENT.LOCATION: runtime.location,
+    CURRENT.LANGUAGE: runtime.language,
   }
   ctx = {e.alias: v for e, v in env_map.items()}
   return Template(val).render(**ctx)
@@ -113,9 +110,13 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   return fn(**kws)
 
 
-rt = Runtime(
+runtime = Runtime(
   timezone="Europe/Moscow",
   location="Moscow",
   language="ru",
-  calendar=JsonBasedCalendar.from_path(Path(".rt/calendar.json")),
 )
+
+calendar = JsonBasedCalendar.from_path(Path(".rt/calendar.json"))
+
+backends = punq.Container()
+backends.register(CalendarBackend, instance=calendar)

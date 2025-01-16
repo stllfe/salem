@@ -51,10 +51,10 @@ class ModelDefaults:
 
 
 DEFAULTS: dict[str | re.Pattern, ModelDefaults] = {
-  re.compile(r"qwen/Qwen2.5-\d{1,2}B-Instruct"): ModelDefaults(
+  re.compile(r"qwen/Qwen2.5-(?:Coder-)?\d{1,2}B-(?:Instruct)?"): ModelDefaults(
     gen=GenerationArgs(
-      temperature=0.9,
-      top_p=0.85,
+      temperature=0.7,
+      top_p=0.8,
       min_p=0.15,
       repetition_penalty=1.05,
     )

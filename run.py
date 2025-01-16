@@ -13,8 +13,7 @@ from tools import core
 from tools.runtime import CURRENT
 from tools.runtime import call
 from tools.runtime import resolve
-from tools.runtime import rt
-from tools.utils import get_func_name
+from tools.runtime import runtime
 from tools.utils import get_public_functions
 from tools.utils import get_tool_schema
 
@@ -24,8 +23,15 @@ MODULES: list[ModuleType] = [
   # TODO: implement and add more here
   # ...
 ]
-TOOLS: dict[str, Callable] = {get_func_name(fn): fn for m in MODULES for fn in get_public_functions(m)}
-SCHEMAS: list[dict] = [get_tool_schema(fn, openai=True) for m in MODULES for fn in get_public_functions(m)]
+TOOLS: dict[str, Callable] = {}
+SCHEMAS: list[dict] = []
+
+for m in MODULES:
+  for fn in get_public_functions(m):
+    schema = get_tool_schema(fn, openai=True)
+    TOOLS[schema["function"]["name"]] = fn
+    SCHEMAS.append(schema)
+
 TOOLS_STRING = "\n".join(json.dumps(s, indent=None, ensure_ascii=False) for s in SCHEMAS)
 
 SYSTEM_PROMPT = f"""
@@ -68,10 +74,22 @@ Current location: {CURRENT.LOCATION}
 {TOOLS_STRING}
 </tools>
 
-For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
-<tool_call>
+For each function call, return a JSON object with function name and arguments within <CALL></CALL> XML-like tags:
+```
+<CALL>
 {{"name": <function-name>, "arguments": <args-json-object>}}
-</tool_call>
+</CALL>
+```
+
+For example, calling a function named "myfunc1" with an "arg1" (according to function schema specified in the system prompt):
+```
+<CALL>
+{{"name": "myfunc1", "arguments": {{"arg1": 2}}}}
+</CALL>
+```
+
+Multiple tool calls should be wrapped each with its own pair of <CALL></CALL> XML-like tags.
+You ONLY mark tool calls with the <CALL> and </CALL> XML-like tags.
 """  # noqa: E501
 
 DYNAMIC_VARIABLES_HINT = f"""
@@ -85,6 +103,11 @@ def get_system_prompt() -> str:
 
 
 gen = config.get_default_generation()
+# api = openai.APIArgs(
+#   model="gpt-4o",
+#   base_url="https://api.openai.com/v1",
+#   key=os.getenv("OPENAI_API_KEY"),
+# )
 api = openai.APIArgs()
 llm = openai.get_client(api)
 
@@ -120,10 +143,10 @@ async def chat() -> None:
       if fncall.message:
         print(fncall.message)
         messages.append({"role": "assistant", "content": fncall.message})
-      logger.debug(f"Calling {fncall.name!r} with args {fncall.args} ...")
+      logger.info(f"Calling {fncall.name!r} with args {fncall.args} ...")
       fn = TOOLS[fncall.name]
-      result = call(fn, rt, **fncall.args)
-      logger.debug(f"Function call result: {result!r}")
+      result = call(fn, runtime, **fncall.args)
+      logger.info(f"Function call result:\n{result}")
       messages.append({"role": "tool", "content": json.dumps(result, ensure_ascii=False), "tool_call_id": fncall.id})
 
 
