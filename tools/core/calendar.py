@@ -9,7 +9,7 @@ from tools.types import Event
 from tools.types import Reminder
 
 
-calendar = runtime.get_tool(Calendar)
+calendar = runtime.get_backend(Calendar)
 
 
 def _format_event(e: Event) -> str:

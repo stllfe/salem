@@ -1,13 +1,26 @@
-from typing import Any
-
 from tools.core.backend.web import Browser
+from tools.runtime import ISO8061_DATE
 from tools.runtime import runtime
+from tools.types import WebLink
+from tools.types import WikiExtract
 
 
-browser = runtime.get_tool(Browser)
+browser = runtime.get_backend(Browser)
 
 
-def search_topk(query: str, k: int = 3) -> list[dict[str, Any]]:
+def _format_link(l: WebLink) -> str:
+  return f"[{l.uid}] {l.title} [URL]({l.url}):\n\t{l.caption}"
+
+
+def _format_wiki(w: WikiExtract) -> str:
+  return (
+    f"[{w.uid}] **{w.title}{' | ' + w.section if w.section else ''}** [URL]({w.url}):"
+    f"\n\t{w.content}\n\t"
+    f"_last edited @ {w.updated_at.strftime(ISO8061_DATE)}_"
+  )
+
+
+def search_topk(query: str, k: int = 3) -> str:
   """Get top K search results for the given query (just like a desktop browser with a search engine).
 
   Note: this only returns the URLs and their short descriptions.
@@ -18,11 +31,13 @@ def search_topk(query: str, k: int = 3) -> list[dict[str, Any]]:
     k: The amount of top relevant pages to return
 
   Returns:
-    A list of K dictionaries with URLs, their descriptions and short unique IDs
+    A list of K links with URLs, their descriptions and short unique IDs
     for referencing in answers or other functions
   """
 
-  return [link.dump() for link in browser.search_topk(query, k=k)]
+  if links := browser.search_topk(query, k=k):
+    return "Search results:\n- " + "- ".join([_format_link(l) + "\n" for l in links])
+  return f"No results found for search {query!r}"
 
 
 def get_page_content(url: str) -> str:
@@ -40,7 +55,7 @@ def get_page_content(url: str) -> str:
   return browser.get_page_content(url)
 
 
-def search_wiki(query: str, k: int = 5) -> list[dict[str, str]]:
+def search_wiki(query: str, k: int = 3) -> str:
   """Get top K search results from Wikipedia for the given query.
 
   Note: it returns short relevant extracts (not full pages) if found.
@@ -50,7 +65,9 @@ def search_wiki(query: str, k: int = 5) -> list[dict[str, str]]:
     k: The amount of top relevant extracts to return
 
   Returns:
-    A list of K dictionaries with URLs and short Wikipedia extracts as well as some metadata.
+    A list of K short Wikipedia extracts with their full URLs and some metadata.
   """
 
-  return [link.dump() for link in browser.search_wiki(query, k=k)]
+  if wikis := browser.search_wiki(query, k=k):
+    return "Relevant wikipedia extracts:\n- " + "- ".join([_format_wiki(w) + "\n" for w in wikis])
+  return f"No results found for search {query!r}"

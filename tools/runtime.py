@@ -90,7 +90,7 @@ class Runtime:
     ctx = {e.alias: v for e, v in env_map.items()}
     return Template(value).render(**ctx)
 
-  def get_tool(self, backend: type[T]) -> T:
+  def get_backend(self, backend: type[T]) -> T:
     tool = self.backends.resolve(backend)
     return cast(T, tool)
 
