@@ -1,10 +1,7 @@
 # noqa: A005
-from typing import Literal
 
+from tools.types import TimeUnit
 from tools.runtime import CURRENT
-
-
-Unit = Literal["hour", "minute", "second", "day", "week", "month", "year"]
 
 
 def get_now(location: str = CURRENT.LOCATION) -> str:
@@ -15,7 +12,7 @@ def get_now(location: str = CURRENT.LOCATION) -> str:
   """
 
 
-def add_time(dt: str, amount: int, unit: Unit) -> str:
+def add_time(dt: str, amount: int, unit: TimeUnit) -> str:
   """Add some time to the date to produce a new date.
 
   Args:

@@ -5,23 +5,48 @@ from collections.abc import Callable
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 from zoneinfo import ZoneInfo
 
 import punq
 
 from attrs import define
+from attrs import field
 from mako.template import Template
 
-from tools.core.backend import JsonBasedCalendar
-from tools.core.backend.calendar import CalendarBackend
+from tools.core.backend import calendar
+from tools.core.backend import web
 
 
 ISO8061_DATE = "%Y-%m-%d"
 ISO8061_TIME = "%H:%M:%S"
 ISO8061 = f"{ISO8061_DATE} {ISO8061_TIME}"
 
-Callback = Callable[..., None]
+MAKO_PREFIX = "$"
+
+T = TypeVar("T")
+
+
+def _get_current_var_name(name: str) -> str:
+  return f"CURRENT_{name.upper()}"
+
+
+class CURRENT(enum.StrEnum):
+  """Simple placeholders for the current dynamic runtime values."""
+
+  @staticmethod
+  def _generate_next_value_(name: str, *_) -> str:
+    return MAKO_PREFIX + "{%s}" % _get_current_var_name(name)
+
+  TIME: str = enum.auto()
+  DATE: str = enum.auto()
+  DATETIME: str = enum.auto()
+  LOCATION: str = enum.auto()
+  LANGUAGE: str = enum.auto()
+
+  @enum.property
+  def alias(self) -> str:
+    return _get_current_var_name(self.name)
 
 
 @define
@@ -29,6 +54,8 @@ class Runtime:
   timezone: str
   location: str
   language: str
+
+  backends: punq.Container = field(factory=punq.Container, init=False)
 
   @cached_property
   def tz(self) -> ZoneInfo:
@@ -52,39 +79,20 @@ class Runtime:
 
     return f"{self.date} {self.time}"
 
+  def resolve(self, value: str) -> str:
+    env_map = {
+      CURRENT.TIME: self.time,
+      CURRENT.DATE: self.date,
+      CURRENT.DATETIME: self.datetime,
+      CURRENT.LOCATION: self.location,
+      CURRENT.LANGUAGE: self.language,
+    }
+    ctx = {e.alias: v for e, v in env_map.items()}
+    return Template(value).render(**ctx)
 
-def _get_current_var_name(name: str) -> str:
-  return f"CURRENT_{name.upper()}"
-
-
-class CURRENT(enum.StrEnum):
-  """Simple placeholders for the current dynamic runtime values."""
-
-  @staticmethod
-  def _generate_next_value_(name: str, *_) -> str:
-    return "${%s}" % _get_current_var_name(name)
-
-  TIME: str = enum.auto()
-  DATE: str = enum.auto()
-  DATETIME: str = enum.auto()
-  LOCATION: str = enum.auto()
-  LANGUAGE: str = enum.auto()
-
-  @enum.property
-  def alias(self) -> str:
-    return _get_current_var_name(self.name)
-
-
-def resolve(val: str) -> str:
-  env_map = {
-    CURRENT.TIME: runtime.time,
-    CURRENT.DATE: runtime.date,
-    CURRENT.DATETIME: runtime.datetime,
-    CURRENT.LOCATION: runtime.location,
-    CURRENT.LANGUAGE: runtime.language,
-  }
-  ctx = {e.alias: v for e, v in env_map.items()}
-  return Template(val).render(**ctx)
+  def get_tool(self, backend: type[T]) -> T:
+    tool = self.backends.resolve(backend)
+    return cast(T, tool)
 
 
 def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
@@ -98,10 +106,11 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
 
   for key, val in args.arguments.items():
     # if the value is a string, attempt to render it as a Mako template
-    if isinstance(val, str):
+    if isinstance(val, str) and val.startswith(MAKO_PREFIX):
       try:
-        kws[key] = resolve(val)
+        kws[key] = rt.resolve(val)
       except Exception:
+        # TODO: log error
         kws[key] = val
     else:
       # keep non-string values as-is
@@ -110,13 +119,26 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   return fn(**kws)
 
 
+# @@@ Configuration Section
+
+root_dir = Path("./.rt")
+root_dir.mkdir(exist_ok=True)
+
 runtime = Runtime(
   timezone="Europe/Moscow",
   location="Moscow",
   language="ru",
 )
 
-calendar = JsonBasedCalendar.from_path(Path(".rt/calendar.json"))
 
-backends = punq.Container()
-backends.register(CalendarBackend, instance=calendar)
+runtime.backends.register(
+  calendar.Calendar,
+  instance=calendar.JsonBasedCalendar.from_path(root_dir / "calendar.json"),
+)
+runtime.backends.register(
+  web.Browser,
+  instance=web.Browser(
+    web=web.DuckDuckGoSearch(),
+    wiki=web.WikiChatSearch(language=runtime.language),
+  ),
+)

@@ -1,20 +1,19 @@
 # noqa: A005
 from datetime import datetime
 
-from tools.core.backend import CalendarBackend
-from tools.core.backend import Event
-from tools.core.backend import Reminder
+from tools.core.backend.calendar import Calendar
 from tools.runtime import CURRENT
 from tools.runtime import ISO8061
-from tools.runtime import backends
 from tools.runtime import runtime
+from tools.types import Event
+from tools.types import Reminder
 
 
-calendar: CalendarBackend = backends.resolve(CalendarBackend)
+calendar = runtime.get_tool(Calendar)
 
 
 def _format_event(e: Event) -> str:
-  return f"Event [{e.uid}] @ {e.date.strftime(ISO8061)} - {e.name}\n\tComment:{e.comment or 'N/A'}"
+  return f"Event [{e.uid}] @ {e.date.strftime(ISO8061)} - {e.name}\n\tComment: {e.comment or 'N/A'}"
 
 
 def _format_reminder(r: Reminder) -> str:

@@ -1,4 +1,5 @@
 import inspect
+import json
 import re
 
 from collections.abc import Callable
@@ -11,16 +12,27 @@ from docstring_parser import parse
 NoneType: Type = type(None)
 
 
-def flatten(s: str) -> str:
+class DateTimeJsonEncoder(json.JSONEncoder):
+  def default(self, obj: Any) -> Any:
+    import datetime as dt
+
+    if isinstance(obj, (dt.datetime, dt.date, dt.time)):
+      return obj.isoformat()
+    elif isinstance(obj, dt.timedelta):
+      return (dt.datetime.min + obj).time().isoformat()
+    return super(DateTimeJsonEncoder, self).default(obj)
+
+
+def flatten_string(s: str) -> str:
   s = s.replace("\n", " ")
   return re.sub(r"\s+", " ", s)
 
 
-def docformat(doc: str) -> str:
+def format_docstring(doc: str) -> str:
   for m in re.finditer(r"(^\s*(Args?|Examples?|Raises?|Returns?):\s*$)", doc, flags=re.MULTILINE):
     doc = doc[: m.start()]
     break
-  return flatten(doc.strip())
+  return flatten_string(doc.strip())
 
 
 def extract_type_info(annotation: Any) -> dict[str, Any]:
@@ -97,7 +109,7 @@ def get_tool_schema(fn: Callable, *, openai: bool = False) -> dict[str, Any]:
       parsed_doc = parse(doc)
       for p in parsed_doc.params:
         if p.arg_name == name:
-          desc = flatten(p.description or "")
+          desc = flatten_string(p.description or "")
           break
 
     if required:
@@ -112,11 +124,11 @@ def get_tool_schema(fn: Callable, *, openai: bool = False) -> dict[str, Any]:
     parsed_doc = parse(doc)
     if parsed_doc.returns and parsed_doc.returns.description:
       returns_desc = parsed_doc.returns.description
-  returns_desc = flatten(returns_desc)
+  returns_desc = flatten_string(returns_desc)
 
   schema = {
     "name": get_func_name(fn, sep="_" if openai else "."),
-    "description": docformat(doc.strip()),  # used to be -> doc.split("\n")[0] if doc else ""
+    "description": format_docstring(doc.strip()),  # used to be -> doc.split("\n")[0] if doc else ""
     "parameters": parameters,
   }
   if not openai:
@@ -135,3 +147,17 @@ def get_public_functions(module: ModuleType) -> list[Callable]:
     return inspect.isfunction(member) and member.__module__ == module.__name__
 
   return [getattr(module, name) for name in dir(module) if include(name)]
+
+
+MAX_LENGTH_TRUNCATE_CONTENT = 20000
+
+
+def truncate_content(content: str, max_length: int = MAX_LENGTH_TRUNCATE_CONTENT) -> str:
+  if len(content) <= max_length:
+    return content
+  else:
+    return (
+      content[: max_length // 2]
+      + f"\n..._This content has been truncated to stay below {max_length} characters_...\n"
+      + content[-max_length // 2 :]
+    )

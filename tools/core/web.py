@@ -1,12 +1,13 @@
-from typing import Literal
+from typing import Any
 
-from tools.runtime import CURRENT
-
-
-Language = Literal["ru", "en"]
+from tools.core.backend.web import Browser
+from tools.runtime import runtime
 
 
-def search_topk(query: str, k: int = 5) -> list[dict[str, str]]:
+browser = runtime.get_tool(Browser)
+
+
+def search_topk(query: str, k: int = 3) -> list[dict[str, Any]]:
   """Get top K search results for the given query (just like a desktop browser with a search engine).
 
   Note: this only returns the URLs and their short descriptions.
@@ -21,9 +22,12 @@ def search_topk(query: str, k: int = 5) -> list[dict[str, str]]:
     for referencing in answers or other functions
   """
 
+  return [link.dump() for link in browser.search_topk(query, k=k)]
+
 
 def get_page_content(url: str) -> str:
   """Extract the readable content from the given page URL in the Markdown format.
+  Use this to browse webpages.
 
   Args:
     url: A string starting with 'http://' or 'https://' or '@' and a short uid
@@ -33,10 +37,10 @@ def get_page_content(url: str) -> str:
     A markdown string with the page content
   """
 
+  return browser.get_page_content(url)
 
-# use-case for the Stanford's WikiChat:
-# https://search.genie.stanford.edu/redoc
-def search_wiki(query: str, k: int = 5, language: Language = CURRENT.LANGUAGE) -> list[dict[str, str]]:
+
+def search_wiki(query: str, k: int = 5) -> list[dict[str, str]]:
   """Get top K search results from Wikipedia for the given query.
 
   Note: it returns short relevant extracts (not full pages) if found.
@@ -48,3 +52,5 @@ def search_wiki(query: str, k: int = 5, language: Language = CURRENT.LANGUAGE) -
   Returns:
     A list of K dictionaries with URLs and short Wikipedia extracts as well as some metadata.
   """
+
+  return [link.dump() for link in browser.search_wiki(query, k=k)]

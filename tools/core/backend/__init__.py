@@ -1,4 +1,2 @@
-from .calendar import CalendarBackend as CalendarBackend
-from .calendar import Event as Event
-from .calendar import JsonBasedCalendar as JsonBasedCalendar
-from .calendar import Reminder as Reminder
+from .calendar.base import Calendar as Calendar
+from .web.base import Browser as Browser

@@ -5,20 +5,22 @@ import os
 from collections.abc import Callable
 from inspect import cleandoc
 from types import ModuleType
+from typing import Any
 
 from dotenv import load_dotenv
 from loguru import logger
+
+from tools.types import JsonMixin
 
 
 load_dotenv(".env")
 
 from src.datagen import config
 from src.datagen import openai
-from tools import core
 from tools.runtime import CURRENT
 from tools.runtime import call
-from tools.runtime import resolve
 from tools.runtime import runtime
+from tools.utils import DateTimeJsonEncoder
 from tools.utils import get_public_functions
 from tools.utils import get_tool_schema
 
@@ -26,10 +28,14 @@ from tools.utils import get_tool_schema
 MODEL: str = config.MODEL
 OPENAI_FORMAT: bool = bool(int(os.getenv("OPENAI_FORMAT", "1")))
 
+from tools.core import calendar
+from tools.core import web
+
+
 USED_MODULES: list[ModuleType] = [
-  core.calendar,
-  # TODO: implement and add more here
-  # ...
+  calendar,
+  web,
+  # TODO: add more here
 ]
 TOOL_REGISTRY: dict[str, Callable] = {}
 TOOL_SCHEMAS: list[dict] = []
@@ -110,10 +116,16 @@ You can use these dynamic variables as strings when you want to reference some c
 
 
 def get_system_prompt() -> str:
-  return cleandoc(f"{resolve(SYSTEM_PROMPT)}\n{DYNAMIC_VARIABLES_HINT}")
+  return cleandoc(f"{runtime.resolve(SYSTEM_PROMPT)}\n{DYNAMIC_VARIABLES_HINT}")
 
 
-if OPENAI_FORMAT and MODEL.startswith("gpt"):
+def dumps(o: Any) -> str:
+  if isinstance(o, JsonMixin):
+    return o.json().decode("utf-8")
+  return json.dumps(o, ensure_ascii=False, indent=2, cls=DateTimeJsonEncoder)
+
+
+if MODEL.startswith("gpt"):
   api = openai.APIArgs(
     model=MODEL.strip(),
     base_url="https://api.openai.com/v1",
@@ -133,33 +145,33 @@ async def chat() -> None:
   logger.info(f"Loaded {len(TOOL_REGISTRY)} tools from {len(USED_MODULES)} connected modules.")
   logger.info(f"Model: {MODEL} | OpenAI format: {OPENAI_FORMAT} | API URL: {api.base_url}")
 
-  messages: list[dict[str, str | dict]] = []
-  messages.append({"role": "system", "content": system})
+  history: list[dict[str, str | dict]] = []
+  history.append({"role": "system", "content": system})
 
   while True:
-    if messages[-1]["role"] in ("assistant", "system"):
+    if history[-1]["role"] in ("assistant", "system"):
       user = input("$> ").strip()
       if user.startswith("/"):
         match user.removeprefix("/"):
           case "history":
-            for m in messages:
-              print(json.dumps(m, indent=2, ensure_ascii=False))
+            for message in history:
+              print(dumps(message))
           case "current":
             for c in CURRENT:
-              print(c.value, "->", resolve(c.value))
+              print(c.value, "->", runtime.resolve(c.value))
           case _:
             raise ValueError(f"unknown command: {user.strip()}")
         continue
-      messages.append({"role": "user", "content": user})
-    answer = await openai.generate(messages, llm, api=api, gen=gen, tools=TOOL_SCHEMAS)
+      history.append({"role": "user", "content": user})
+    answer = await openai.generate(history, llm, api=api, gen=gen, tools=TOOL_SCHEMAS)
     if isinstance(answer, str):
       print("A:", answer)
-      messages.append({"role": "assistant", "content": answer})
+      history.append({"role": "assistant", "content": answer})
       continue
     answer, calls = answer
     if not answer and not calls:
       logger.warning("No response from assistant!")
-      messages.append({
+      history.append({
         "role": "system",
         "name": "status",
         "content": "Error: no function calls or answer was generated!",
@@ -169,15 +181,18 @@ async def chat() -> None:
     response = {"role": "assistant", "content": answer}
     if calls:
       response.update(tool_calls=[c.dump() for c in calls])
-    messages.append(response)
+    history.append(response)
     for c in calls:
       logger.info(f"Calling {c.name!r} with args {c.args} ...")
       fn = TOOL_REGISTRY[c.name]
-      result = call(fn, runtime, **c.args)
+      try:
+        result = call(fn, runtime, **c.args)
+      except Exception as err:
+        result = f"Unexpected error while calling a function:\n{err}"
       logger.info(f"Function call result:\n{result}")
       if not isinstance(result, str):
-        result = json.dumps(result, ensure_ascii=False, indent=2)
-      messages.append({
+        result = dumps(result)
+      history.append({
         "role": "tool",
         "name": c.name,
         "content": result,
