@@ -1,4 +1,18 @@
+from src.utils import get_logger
+from tools.core.backend.weather import WeatherProvider
 from tools.runtime import CURRENT
+from tools.runtime import runtime
+from tools.types import Weather
+
+
+weather = runtime.get_backend(WeatherProvider)
+logger = get_logger()
+
+
+def _format_weather(w: Weather) -> str:
+  return (
+    f"[{w.date}] @ {w.temperature:.2f} {w.units}°; humidity {w.humidity:.2f}%; wind: {w.wind_speed:.2f} metres/seconds"  # noqa
+  )
 
 
 def get_weather(location: str = CURRENT.LOCATION) -> str:
@@ -7,6 +21,11 @@ def get_weather(location: str = CURRENT.LOCATION) -> str:
   Args:
     location: What location to get the weather for (current by default)
   """
+
+  w = weather.get_weather(location)
+  logger.debug(f"weather call:\n{w!r}")
+
+  return f"Weather @ {w.location}: {_format_weather(w)}"
 
 
 def get_forecast(days: int, location: str = CURRENT.LOCATION) -> str:
@@ -21,3 +40,8 @@ def get_forecast(days: int, location: str = CURRENT.LOCATION) -> str:
   Raises:
     ValueError: If the amount of days is not between 1 and 21
   """
+
+  if forecast := weather.get_forecast(days, location):
+    title = f"Weather forcast for {days} days in {location}:\n- "
+    return title + "- ".join([_format_weather(w) + "\n" for w in forecast])
+  return "No events found for the given query."

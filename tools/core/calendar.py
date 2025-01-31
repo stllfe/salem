@@ -41,6 +41,9 @@ def add_event(name: str, date: str, time: str, comment: str | None = None) -> st
 def get_event(uid: str) -> str:
   """Get an event by this uid.
 
+  Args:
+    uid: A unique identifier of the event needed.
+
   Raises:
     KeyError: If no events found by the given uid
   """
@@ -51,6 +54,9 @@ def get_event(uid: str) -> str:
 
 def remove_event(uid: str) -> str:
   """Remove an event by this uid.
+
+  Args:
+    uid: A unique identifier of the event needed.
 
   Raises:
     KeyError: If no events found by the given uid
@@ -67,7 +73,7 @@ def edit_event(uid: str, date: str | None = None, time: str | None = None, comme
   """Change some properties of an existing event.
 
   Args:
-    uid: The event's uid
+    uid: The event's unique identifier
     date: A new event's date (ISO8601 YYYY-MM-DD format)
     time: A new event's time (ISO8601 hours:minutes:seconds format)
     comment: A new event's comment
@@ -97,8 +103,10 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
 
   start = datetime.fromisoformat(start).astimezone(runtime.tz)
   end = datetime.fromisoformat(end).astimezone(runtime.tz)
-  if end < start:
-    raise ValueError("'end' date should be later then 'start'")
+
+  start, end = sorted((start, end))
+  if end <= start:
+    raise ValueError(f"'end' date ({end}) should be later then 'start' ({start})")
   if events := calendar.get_all_events(start, end, regex):
     return "Events:\n- " + "- ".join([_format_event(e) + "\n" for e in events])
   return "No events found for the given query."
@@ -124,6 +132,9 @@ def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> str:
 def remove_reminder(uid: str) -> str:
   """Remove a reminder by this uid.
 
+  Args:
+    uid: A unique identifier of the event needed.
+
   Raises:
     KeyError: If no reminders found by the given uid
 
@@ -138,6 +149,9 @@ def remove_reminder(uid: str) -> str:
 def get_reminder(uid: str) -> str:
   """Get a reminder by this uid.
 
+  Args:
+    uid: A unique identifier of the event needed.
+
   Raises:
     KeyError: If no reminders found by the given uid
   """
@@ -147,7 +161,11 @@ def get_reminder(uid: str) -> str:
 
 
 def get_all_reminders(date: str = CURRENT.DATE) -> str:
-  """Get all reminders on the given date in the user's calendar."""
+  """Get all reminders on the given date in the user's calendar.
+
+  Args:
+    date: The date to get all reminders for (ISO8601 YYYY-MM-DD format)
+  """
 
   date = datetime.fromisoformat(date)
   if reminders := calendar.get_all_reminders(date):

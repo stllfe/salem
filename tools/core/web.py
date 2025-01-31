@@ -58,6 +58,8 @@ def get_page_content(url: str) -> str:
 def search_wiki(query: str, k: int = 3) -> str:
   """Get top K search results from Wikipedia for the given query.
 
+  Hint: use it whenever user asks for factual question like a person, company, city name etc.
+
   Note: it returns short relevant extracts (not full pages) if found.
 
   Args:

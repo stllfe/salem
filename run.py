@@ -10,8 +10,6 @@ from typing import Any
 from dotenv import load_dotenv
 from loguru import logger
 
-from tools.types import JsonMixin
-
 
 load_dotenv(".env")
 
@@ -20,6 +18,7 @@ from src.datagen import openai
 from tools.runtime import CURRENT
 from tools.runtime import call
 from tools.runtime import runtime
+from tools.types import JsonMixin
 from tools.utils import DateTimeJsonEncoder
 from tools.utils import get_public_functions
 from tools.utils import get_tool_schema
@@ -29,12 +28,14 @@ MODEL: str = config.MODEL
 OPENAI_FORMAT: bool = bool(int(os.getenv("OPENAI_FORMAT", "1")))
 
 from tools.core import calendar
+from tools.core import weather
 from tools.core import web
 
 
 USED_MODULES: list[ModuleType] = [
   calendar,
   web,
+  weather,
   # TODO: add more here
 ]
 TOOL_REGISTRY: dict[str, Callable] = {}
@@ -66,7 +67,8 @@ SYSTEM_PROMPT = f"""
 Твои ответы максимально приближены по формату к диалогу реальных людей в дружеском кругу общения.
 Твои ответы краткие и лаконичные, но несут полную информацию, полезную для пользователя.
 Ты отвечаешь пользователю так, как произносишь информацию вживую голосом.
-Твои ответы озвучиваются пользователю через спикеры колонки, поэтому кратко выражаешь свои ответы, а в тексте используешь только символы алфавита, знаков пунктуации, которые моно однозначно озвучить.
+Твои ответы озвучиваются пользователю через спикеры колонки, поэтому кратко выражаешь свои ответы, а в тексте используешь только символы алфавита, знаков пунктуации, которые можно однозначно озвучить.
+Твои ответы не содержат эмодзи и неуместных символов для русского или английского языков.
 
 Для удовлетворения пользовательских запросов ты используешь подключенные функции (function calling), которые в диалоге с пользователем называются «навыками» или «умениями».
 Ты используешь ТОЛЬКО доступные функции для выполнения запросов.
@@ -132,7 +134,7 @@ if MODEL.startswith("gpt"):
     key=os.getenv("OPENAI_API_KEY"),
   )
 else:
-  api = openai.APIArgs()
+  api = openai.APIArgs(base_url="http://localhost:3000/v1")
 
 gen = config.get_default_generation(MODEL)
 llm = openai.get_client(api)

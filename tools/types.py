@@ -71,3 +71,32 @@ class WikiExtract(JsonMixin):
   updated_at: datetime = field(converter=convert_datetime)
   section: str | None = None
   uid: str = field(factory=get_short_uid)
+
+
+@frozen
+class Weather(JsonMixin):
+  location: str
+  temperature: float
+
+  feels_like: float
+  """How actually a temperature feels like"""
+
+  humidity: float
+  """Humidity in %"""
+
+  pressure: float
+  """Pressure in mmHg"""
+
+  wind_speed: float
+  """Wind speed in m/S (MpS)"""
+
+  date: datetime = field(converter=convert_datetime)
+
+  units: Literal["C", "F"] = "C"
+  """Temperature units (celsius or fahrenheit)"""
+
+
+# @frozen
+# class WeatherForecast(JsonMixin):
+#   location: str
+#   forecast: list[Weather]

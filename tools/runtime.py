@@ -15,6 +15,7 @@ from attrs import field
 from mako.template import Template
 
 from tools.core.backend import calendar
+from tools.core.backend import weather
 from tools.core.backend import web
 
 
@@ -119,6 +120,16 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   return fn(**kws)
 
 
+def runtime_callable(fn: Callable) -> Callable:
+  from functools import wraps
+
+  @wraps(fn)
+  def wrapper(*args, **kwargs) -> Any:
+    return call(fn, runtime, *args, **kwargs)
+
+  return wrapper
+
+
 # @@@ Configuration Section
 
 root_dir = Path("./.rt")
@@ -141,4 +152,8 @@ runtime.backends.register(
     web=web.DuckDuckGoSearch(),
     wiki=web.WikiChatSearch(language=runtime.language),
   ),
+)
+runtime.backends.register(
+  weather.WeatherProvider,
+  instance=weather.WttrWeatherProvider(language=runtime.language),
 )
