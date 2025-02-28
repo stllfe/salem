@@ -1,5 +1,8 @@
+import json
+
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 import orjsonl
 import yaml
@@ -20,3 +23,9 @@ def read_prompt(p: Path) -> Instruction:
 
 def read_jsonl(p: Path) -> Iterable[dict]:
   return orjsonl.stream(p)
+
+
+def dumps(v: Any) -> str:
+  if isinstance(v, dict | list | tuple | set):
+    return json.dumps(v, ensure_ascii=False, indent=2)
+  return str(v)

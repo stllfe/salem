@@ -9,7 +9,7 @@ from attrs import define
 from attrs import field
 from markdownify import markdownify
 from requests import Session
-from requests.exceptions import RequestException as RequestException
+from requests.auth import HTTPBasicAuth
 
 from tools.types import Language
 from tools.types import WebLink
@@ -85,13 +85,16 @@ class Browser:
 
     # send a GET request to the URL
     response = self.session.get(url, headers=self.HEADERS)
+    if response.status_code in (401, 400):
+      response = self.session.get(url, headers=self.HEADERS, auth=HTTPBasicAuth("user", "pass"))
+
     response.raise_for_status()  # raise an exception for bad status codes
 
     # convert the HTML content to Markdown
     markdown_content = markdownify(response.text).strip()
 
     # remove multiple line breaks
-    markdown_content = re.sub(r"\n{3,}", "\n\n", markdown_content)
+    markdown_content = re.sub(r"\n{3,}", "\n", markdown_content)
 
     # cache visited pages
     content = truncate_content(markdown_content, 10000)

@@ -1,12 +1,11 @@
 # noqa: A005
 
-import json
 import re
 
 from functools import cache
 from functools import cached_property
 from os import getenv
-from typing import Any, Literal
+from typing import Literal
 
 import jinja2 as j2
 
@@ -84,12 +83,6 @@ def get_default_system_prompt(model: str | None = None) -> str:
   return defs.system
 
 
-def dumps(v: Any) -> str:
-  if isinstance(v, dict | list | tuple | set):
-    return json.dumps(v, ensure_ascii=False, indent=2)
-  return str(v)
-
-
 @define
 class Instruction:
   prompt: str = field(validator=V.min_len(1))
@@ -97,9 +90,11 @@ class Instruction:
 
   @cached_property
   def template(self) -> j2.Template:
-    return j2.Template(self.prompt)
+    return j2.Template(self.prompt, undefined=j2.StrictUndefined)
 
   def prepare(self, **context) -> list[dict[str, str]]:
+    from src.datagen.utils import dumps
+
     history = []
     context.update(dumps=dumps)  # special utility for jsons
     if self.system:

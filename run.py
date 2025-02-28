@@ -179,7 +179,8 @@ async def chat() -> None:
         "content": "Error: no function calls or answer was generated!",
       })
       continue
-    print("A:", answer)
+    if answer:
+      print("A:", answer)
     response = {"role": "assistant", "content": answer}
     if calls:
       response.update(tool_calls=[c.dump() for c in calls])

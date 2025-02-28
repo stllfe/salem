@@ -95,6 +95,9 @@ class Runtime:
     tool = self.backends.resolve(backend)
     return cast(T, tool)
 
+  def set_backend(self, backend: type[T], instance: T) -> None:
+    self.backends.register(backend, instance=instance)
+
 
 def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
   """Runs the given tool function, interpolating context variables from the runtime."""
@@ -121,6 +124,8 @@ def call(fn: Callable, rt: Runtime, *args, **kwargs) -> Any:
 
 
 def runtime_callable(fn: Callable) -> Callable:
+  global runtime
+
   from functools import wraps
 
   @wraps(fn)
@@ -142,18 +147,18 @@ runtime = Runtime(
 )
 
 
-runtime.backends.register(
+runtime.set_backend(
   calendar.Calendar,
   instance=calendar.JsonBasedCalendar.from_path(root_dir / "calendar.json"),
 )
-runtime.backends.register(
+runtime.set_backend(
   web.Browser,
   instance=web.Browser(
     web=web.DuckDuckGoSearch(),
     wiki=web.WikiChatSearch(language=runtime.language),
   ),
 )
-runtime.backends.register(
+runtime.set_backend(
   weather.WeatherProvider,
   instance=weather.WttrWeatherProvider(language=runtime.language),
 )

@@ -105,8 +105,8 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
   end = datetime.fromisoformat(end).astimezone(runtime.tz)
 
   start, end = sorted((start, end))
-  if end <= start:
-    raise ValueError(f"'end' date ({end}) should be later then 'start' ({start})")
+  # if end <= start:
+  #   raise ValueError(f"'end' date ({end}) should be later then 'start' ({start})")
   if events := calendar.get_all_events(start, end, regex):
     return "Events:\n- " + "- ".join([_format_event(e) + "\n" for e in events])
   return "No events found for the given query."

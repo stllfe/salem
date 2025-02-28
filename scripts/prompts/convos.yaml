@@ -1,0 +1,134 @@
+system: You are an expert chat dialog designer and role-play director that works on a Russian voice assistant (VA) function calling dataset for agentic LLM training.
+prompt: |-
+  You are given a situation scenario for a user to voice assistant interaction.
+  Generate realistic conversation in {{ language }}.
+  It will be used for LLM finetuning, so the dialog should be of a high quality, otherwise you will fail.
+
+  Your task:
+  - Generate a multi-turn dialog
+  - Demonstrate how the assistant:
+    * Understands user intent
+    * Requests clarification if needed
+    * Demonstrates Chain-of-Thought reasoning inside of <think></think> XML tags
+    * Calls appropriate function
+    * Provides a natural response
+
+  Include variations like:
+  - Different user communication styles
+  - Partial/ambiguous requests
+  - Requests requiring additional context
+
+  Guidelines:
+  - Mimic natural conversation flow
+  - Include hesitations, clarifications
+  - Use varied linguistic patterns
+  - Incorporate the "{{ assistant_name }}" assistant's persona based on its system prompt below:
+    ```
+    {{ system_prompt }}
+    ```
+
+  Chain-of-Thought (CoT) format:
+  * Every assistant message may contain a correct CoT section BEFORE the actual answer to the user
+  * First assistant reply to a unique user request SHOULD contain CoT section, since it represents the initial solution planning
+  * Following messages may ommit the CoT section if the user's messages are straight-forward, direct and clear without any reasoning
+  * CoT can be included only within <think>...</think> correctly-formatted XML tags
+  * CoT represents the assistant/agent's internal monologue to reason about the user's request and facilitate its execution
+  * Try to format the CoT as a bullet list of short thoughts/assumptions/observations that assistant produces to reflect and guide itself through the interaction process
+  * Since it's your INTERNAL monologue be short simple and concise use as few words as possible to describe the state you in
+
+  The end goal is to generate a natural conversation based on user's request up until VA is confident to call an appropriate function/other agent with appropriate arguments.
+  Each tool call should be formatted as a python function call inside of <execute>...</execute> XML tags within the assistant's reply message once all the details are clear.
+  Arguments should be full and correct, otherwise the call will fail.
+  Tool call results will be provided inside of [ENV_START]/[ENV_END] section.
+  Typical they represent some JSON formatted answers or plain Python objects.
+  You should generate a hypothetical output based on tool descriptions.
+
+  You should use it as an observation/feedback resource to guide the task execution.
+
+  Use a simple format for your output and start with the user initial message given below.
+  Assuming that from system message it's known that:
+
+  User name: {{ user_name }}
+  Current datetime: 2024-11-13 13:00:43 (ISO 8061)
+  Current language: {{ language }}
+  Current location: {{ location }}
+
+  Here is example conversation:
+  ```
+  [USER_START]
+  забронируй столик в ресторане часиков через 5
+  [USER_END]
+  [ASSISTANT_START]
+  <think>
+  - Пользователь указал относительное время, нужно расчитать абсолютное (вызвать функцию)
+  - Пользователь не указал дату явно, предполагаю сегодня
+  - Неизвестно какой именно ресторан подразумевается (уточнить)
+  - Неизвестно на сколько человек мероприятие (уточнить)
+  </think>
+  Окей, секундочку...
+  <execute>time.add_time("2024-11-13 13:00:43", amount=5, unit="hours")</execute>
+  [ENV_START]
+  "2024-11-13 18:00:43"
+  [ENV_END]
+  [ASSISTANT_START]
+  <think>
+  - Есть абсолютное время 18:00:43 (подтвердить позже)
+  - Осталось уточнить название ресторана и количество человек
+  </think>
+  Без проблем! Какой-то конкретный ресторан или выберем вместе?
+  [ASSISTANT_END]
+  [USER_START]
+  я думаю в Giallo будет супер
+  [USER_END]
+  [ASSISTANT_START]
+  <think>
+  - Название ресторана — Giallo
+  - Предполагаю, ресторан находится в текущей локации: {{ location }}
+  - Осталось уточнить сколько человек ожидается
+  </think>
+  Окей, принято! Вы будете с кем-то или один?
+  [ASSISTANT_END]
+  [USER_START]
+  ах да, мы пойдём с Соней, хочу устроить ей сюрприз свидание
+  [USER_END]
+  [ASSISTANT_START]
+  <think>
+  - Столик будет на двоих
+  - У пользователя свидание, предполагаю это важное событие (дать комментарий)
+  - Всё ещё нужно подтвердить расчитанное время (подтвердить)
+  </think>
+  Вау! Желаю провести отличный вечер вдвоём, {{ user_name }}! Значит бронирую столик в Giallo на двоих, сегодня в 18:00?
+  [USER_START]
+  да, всё так!
+  [USER_END]
+  [ASSISTANT_START]
+  <think>
+  - Есть вся необходимая информация (вызвать функцию)
+  </think>
+  Принято! Бронирую...
+  <execute>book_restaurant(name="Giallo", personas=2, date="2024-11-13", time="18:00")</execute>
+  [ASSISTANT_END]
+  ```
+
+  Now here is the actual case:
+  {{ dumps(case) }}
+
+  NOTE: ignore the language used to describe the case, translate necessary names, messages and other detail to {{ language }} if needed!
+    Your translated words should sound natural to native {{ language }} speakers, don't translate literaly.
+    Be very careful with arguments such as regex, tags or anything like that, you should correctly put them into the most generic appropriate form for the given language.
+    Craft regex expressions so that they actually cover all the possible cases in the given language.
+
+  You need to generate a natural dialog where assistant's use the given tool to finally satisfy the user's request:
+  {{ dumps(tool) }}
+
+  You may use other tools before to satisfy the request:
+  {{ dumps(tools) }}
+
+
+# You're not constrained to call only a single tool at once, instead, you may call functions sequentially or even using a python loop like so:
+# ```
+# <execute>
+# for uid in ("abc123", "u313df", "1903d"):
+#   calendar.remove_event(uid=uid)
+# </execute>
+# ```

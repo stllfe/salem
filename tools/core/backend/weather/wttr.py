@@ -12,9 +12,6 @@ from tools.types import Language
 from tools.types import Weather
 
 
-# https://wttr.in/Moscow?Q?m&format=j1&lang=ru
-
-
 URL = "https://wttr.in/{location}?Q?m&format=j1&lang={language}"
 
 
@@ -55,7 +52,7 @@ class WttrWeatherProvider(WeatherProvider):
     for day in data["weather"][:days]:
       hourly = day["hourly"]
       # temp = sum(float(hour["tempC"]) for hour in day["hourly"]) / len(hourly)
-      # todo: same for other ?
+      # TODO: same for other ?
       hour = hourly[2]
       yield Weather(
         location=data["nearest_area"][0]["areaName"][0]["value"],

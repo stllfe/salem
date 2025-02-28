@@ -13,10 +13,10 @@ def _format_link(l: WebLink) -> str:
 
 
 def _format_wiki(w: WikiExtract) -> str:
+  header = f"{w.title}/{w.section}" if w.section else w.title
+  header = header.strip()
   return (
-    f"[{w.uid}] **{w.title}{' | ' + w.section if w.section else ''}** [URL]({w.url}):"
-    f"\n\t{w.content}\n\t"
-    f"_last edited @ {w.updated_at.strftime(ISO8061_DATE)}_"
+    f"[{w.uid}] **{header}** [URL]({w.url}):\n\t{w.content}\n\t_last edited @ {w.updated_at.strftime(ISO8061_DATE)}_"
   )
 
 

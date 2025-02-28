@@ -1,0 +1,5 @@
+smolagents
+arize-phoenix
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+openinference-instrumentation-smolagents

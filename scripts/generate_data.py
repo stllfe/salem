@@ -72,6 +72,12 @@ class ConvosArgs(BaseArgs):
 
   prompt: Path = PROMPTS / "convos.yaml"
 
+  language: Language = "russian"
+
+  tools: Path = TOOLS
+  prompt: Path = PROMPTS / "convos.yaml"
+  dest: Path = INTERIM / "convos.jsonl"
+
 
 async def append_jsonl(r: dict[str, Any], f: Path, *, lock: asyncio.Lock | None = None) -> None:
   json = orjson.dumps(r).decode()
