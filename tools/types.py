@@ -1,5 +1,6 @@
 # noqa: A005
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal, Self
 
 import orjson
@@ -15,6 +16,11 @@ Language = Literal["ru", "en"]  # only these are supported
 TimeUnit = Literal["hour", "minute", "second", "day", "week", "month", "year"]
 
 
+class TempUnit(StrEnum):
+  C: str = "celsius"
+  F: str = "fahrenheit"
+
+
 class JsonMixin:
   def dump(self) -> dict:
     return asdict(self)
@@ -23,9 +29,12 @@ class JsonMixin:
     return orjson.dumps(self.dump(), option=orjson.OPT_OMIT_MICROSECONDS)
 
   @classmethod
-  def load(cls, data: dict | bytes) -> Self:
+  def load(cls, data: dict | bytes, strict=True) -> Self:
     if isinstance(data, bytes):
       data = orjson.loads(data)
+    if strict:
+      slots = set(cls.__slots__)
+      data = {k: v for k, v in data.items() if k in slots}
     return cls(**data)
 
 
@@ -88,15 +97,28 @@ class Weather(JsonMixin):
   """Pressure in mmHg"""
 
   wind_speed: float
-  """Wind speed in m/S (MpS)"""
+  """Wind speed in ms (metres per second)"""
 
   date: datetime = field(converter=convert_datetime)
 
-  units: Literal["C", "F"] = "C"
+  units: TempUnit = field(default=TempUnit.C, converter=TempUnit)
   """Temperature units (celsius or fahrenheit)"""
 
 
-# @frozen
-# class WeatherForecast(JsonMixin):
-#   location: str
-#   forecast: list[Weather]
+@frozen
+class WeatherForecast(JsonMixin):
+  location: str
+  forecast: list[Weather]
+
+  @property
+  def days(self) -> int:
+    return len(self.forecast)
+
+  def min(self, attr: str) -> float:
+    pass
+
+  def max(self, attr: str) -> float:
+    pass
+
+  def avg(self, attr: str) -> float:
+    pass

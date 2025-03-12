@@ -2,8 +2,10 @@ import re
 
 from abc import ABC
 from abc import abstractmethod
-from collections import OrderedDict
 from typing import ClassVar, Generic, TypeVar
+
+import requests_cache as rc
+import retry_requests as rr
 
 from attrs import define
 from attrs import field
@@ -22,16 +24,9 @@ DEFAULT_LANGUAGE: Language = "en"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"  # noqa
 DEFAULT_HEADERS = {"User-Agent": USER_AGENT}
 
-LRU_CACHE_SIZE = 32
-LRU_CACHE: OrderedDict[str, str] = OrderedDict()
 
-
-def manage_cache(url: str, content: str) -> None:
-  if url in LRU_CACHE:
-    return
-  if len(LRU_CACHE) + 1 > LRU_CACHE_SIZE:
-    LRU_CACHE.popitem(last=False)  # fifo
-  LRU_CACHE[url] = content
+cache_session = rc.CachedSession(".cache", expire_after=3600)
+retry_session = rr.retry(cache_session, retries=3, backoff_factor=0.2)
 
 
 T = TypeVar("T")
@@ -79,10 +74,6 @@ class Browser:
     # get the URL from the cache if it's a link UID
     url = self.resolve_url(url)
 
-    # early exit if cached
-    if content := LRU_CACHE.get(url):
-      return content
-
     # send a GET request to the URL
     response = self.session.get(url, headers=self.HEADERS)
     if response.status_code in (401, 400):
@@ -98,6 +89,4 @@ class Browser:
 
     # cache visited pages
     content = truncate_content(markdown_content, 10000)
-    manage_cache(url, content)
-
     return content

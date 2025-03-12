@@ -160,5 +160,5 @@ runtime.set_backend(
 )
 runtime.set_backend(
   weather.WeatherProvider,
-  instance=weather.WttrWeatherProvider(language=runtime.language),
+  instance=weather.OpenMeteoWeatherProvider(language=runtime.language),
 )
