@@ -46,7 +46,7 @@ def is_url_reference(url: str) -> bool:
 class Browser:
   web: SearchEngine[WebLink]
   wiki: SearchEngine[WikiExtract]
-  session: Session = field(factory=Session)
+  session: Session = field(default=retry_session)
   state: dict[str, WebLink] = field(factory=dict, init=False)
 
   HEADERS: ClassVar[dict] = DEFAULT_HEADERS

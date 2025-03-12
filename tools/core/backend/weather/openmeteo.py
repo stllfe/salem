@@ -4,11 +4,11 @@ from typing import Any
 import openmeteo_requests as omr
 import orjson
 import requests_cache as rc
+import retry_requests as rr
 
 from attrs import define
 from attrs import field
 from requests import Session
-from retry_requests import retry
 
 from tools.core.backend.weather.base import WeatherProvider
 from tools.types import JsonMixin
@@ -38,7 +38,7 @@ class LocationInfo(JsonMixin):
 
 # Setup the Open-Meteo API client with cache and retry on error
 cache_session = rc.CachedSession(".cache", expire_after=3600)
-retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+retry_session = rr.retry(cache_session, retries=5, backoff_factor=0.2)
 client = omr.Client(session=retry_session)
 
 
