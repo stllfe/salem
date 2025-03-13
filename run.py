@@ -131,7 +131,7 @@ if MODEL.startswith("gpt"):
   api = openai.APIArgs(
     model=MODEL.strip(),
     base_url="https://api.openai.com/v1",
-    key=os.getenv("OPENAI_API_KEY"),
+    key=os.environ["OPENAI_API_KEY"],
   )
 else:
   api = openai.APIArgs(base_url="http://localhost:3000/v1")

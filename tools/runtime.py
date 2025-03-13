@@ -17,6 +17,7 @@ from mako.template import Template
 from tools.core.backend import calendar
 from tools.core.backend import weather
 from tools.core.backend import web
+from tools.types import Language
 
 
 ISO8061_DATE = "%Y-%m-%d"
@@ -36,14 +37,14 @@ class CURRENT(enum.StrEnum):
   """Simple placeholders for the current dynamic runtime values."""
 
   @staticmethod
-  def _generate_next_value_(name: str, *_) -> str:
+  def _generate_next_value_(name: str, *_, **__) -> str:
     return MAKO_PREFIX + "{%s}" % _get_current_var_name(name)
 
-  TIME: str = enum.auto()
-  DATE: str = enum.auto()
-  DATETIME: str = enum.auto()
-  LOCATION: str = enum.auto()
-  LANGUAGE: str = enum.auto()
+  TIME = enum.auto()
+  DATE = enum.auto()
+  DATETIME = enum.auto()
+  LOCATION = enum.auto()
+  LANGUAGE = enum.auto()
 
   @enum.property
   def alias(self) -> str:
@@ -54,7 +55,7 @@ class CURRENT(enum.StrEnum):
 class Runtime:
   timezone: str
   location: str
-  language: str
+  language: Language
 
   backends: punq.Container = field(factory=punq.Container, init=False)
 
@@ -89,7 +90,8 @@ class Runtime:
       CURRENT.LANGUAGE: self.language,
     }
     ctx = {e.alias: v for e, v in env_map.items()}
-    return Template(value).render(**ctx)
+    out = Template(value, output_encoding="utf-8").render(**ctx)
+    return cast(str, out)
 
   def get_backend(self, backend: type[T]) -> T:
     tool = self.backends.resolve(backend)

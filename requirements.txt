@@ -13,9 +13,11 @@ orjson==3.10.12
 orjsonl==1.0.0
 punq==0.7.0
 pydantic==2.10.3
+python-dotenv==1.0.1
 requests_cache==1.2.0
 retry_requests==2.0.0
 tenacity==9.0.0
+tinydb==4.8.2
 tokenizers==0.21.0
 tqdm==4.67.1
 transformers==4.47.0

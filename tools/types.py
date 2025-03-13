@@ -17,8 +17,8 @@ TimeUnit = Literal["hour", "minute", "second", "day", "week", "month", "year"]
 
 
 class TempUnit(StrEnum):
-  C: str = "celsius"
-  F: str = "fahrenheit"
+  C = "celsius"
+  F = "fahrenheit"
 
 
 class JsonMixin:
@@ -32,6 +32,7 @@ class JsonMixin:
   def load(cls, data: dict | bytes, strict=True) -> Self:
     if isinstance(data, bytes):
       data = orjson.loads(data)
+      assert isinstance(data, dict), f"Unknown raw format: {type(dict)}"
     if strict:
       slots = set(cls.__slots__)
       data = {k: v for k, v in data.items() if k in slots}

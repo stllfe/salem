@@ -1,4 +1,5 @@
 import importlib
+import importlib.resources
 
 import yaml
 
