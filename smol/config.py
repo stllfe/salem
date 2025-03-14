@@ -21,3 +21,6 @@ match os.getenv("MODEL"):
     model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key=os.environ["ANTHROPIC_API_KEY"])
   case _:
     model = OpenAIServerModel("default", api_base="http://localhost:3000/v1", api_key="[EMPTY]", tool_choice="auto")
+
+
+MAX_WEB_STEPS = 5

@@ -5,6 +5,7 @@ import yaml
 
 from smolagents import CodeAgent
 
+from smol.agents.calendar import calendar
 from smol.agents.web import browser
 from smol.config import model
 from tools.runtime import CURRENT
@@ -35,13 +36,11 @@ You can use these dynamic variables as strings when you want to reference some c
 {",\n".join(CURRENT)}
 """
 
-FULL_SYSTEM_PROMPT = (
+CODE_AGENT_PROMPTS["system_prompt"] = (
   f"{CODE_AGENT_PROMPTS['system_prompt']}\n{runtime.resolve(SYSTEM_PROMPT_ADD)}\n{DYNAMIC_VARIABLES_HINT}"
 )
 
-CODE_AGENT_PROMPTS["system_prompt"] = FULL_SYSTEM_PROMPT
-
-agent = CodeAgent(tools=[], model=model, prompt_templates=CODE_AGENT_PROMPTS, managed_agents=[browser])
+agent = CodeAgent(tools=[], model=model, prompt_templates=CODE_AGENT_PROMPTS, managed_agents=[calendar, browser])
 
 while True:
   try:
