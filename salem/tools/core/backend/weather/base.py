@@ -2,7 +2,7 @@ from abc import ABC
 from abc import abstractmethod
 from collections.abc import Iterable
 
-from tools.types import Weather
+from salem.tools.types import Weather
 
 
 class WeatherProvider(ABC):

@@ -10,12 +10,12 @@ from attrs import define
 from attrs import field
 from requests import Session
 
-from tools.core.backend.weather.base import WeatherProvider
-from tools.types import JsonMixin
-from tools.types import Language
-from tools.types import TempUnit
-from tools.types import Weather
-from tools.types import WeatherForecast
+from salem.tools.core.backend.weather.base import WeatherProvider
+from salem.tools.types import JsonMixin
+from salem.tools.types import Language
+from salem.tools.types import TempUnit
+from salem.tools.types import Weather
+from salem.tools.types import WeatherForecast
 
 
 URLS = {

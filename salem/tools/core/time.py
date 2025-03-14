@@ -1,9 +1,11 @@
 # noqa: A005
 
-from tools.types import TimeUnit
-from tools.runtime import CURRENT
+from salem.tools.runtime import CURRENT
+from salem.tools.runtime import runtime_callable
+from salem.tools.types import TimeUnit
 
 
+@runtime_callable
 def get_now(location: str = CURRENT.LOCATION) -> str:
   """Get the current time in ISO8601 format: <hours:minutes:seconds>.
 
@@ -12,6 +14,7 @@ def get_now(location: str = CURRENT.LOCATION) -> str:
   """
 
 
+@runtime_callable
 def add_time(dt: str, amount: int, unit: TimeUnit) -> str:
   """Add some time to the date to produce a new date.
 
@@ -23,6 +26,7 @@ def add_time(dt: str, amount: int, unit: TimeUnit) -> str:
   """
 
 
+@runtime_callable
 def set_timer(hours: int, minutes: int, seconds: int) -> int:
   """Set a timer for the given amount of time.
 
@@ -37,14 +41,17 @@ def set_timer(hours: int, minutes: int, seconds: int) -> int:
   """
 
 
+@runtime_callable
 def get_timer(uid: str) -> str:
   """Get a running timer information by the given uid."""
 
 
+@runtime_callable
 def get_all_timers() -> str:
   """Get all currently running timers information."""
 
 
+@runtime_callable
 def remove_timer(uid: str) -> str:
   """Remove a timer by this uid.
 

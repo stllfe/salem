@@ -9,7 +9,7 @@ from attrs import asdict
 from attrs import field
 from attrs import frozen
 
-from src.utils import get_short_uid
+from salem.utils import get_short_uid
 
 
 Language = Literal["ru", "en"]  # only these are supported

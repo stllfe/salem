@@ -1,8 +1,9 @@
-from tools.core.backend.web import Browser
-from tools.runtime import ISO8061_DATE
-from tools.runtime import runtime
-from tools.types import WebLink
-from tools.types import WikiExtract
+from salem.tools.core.backend.web import Browser
+from salem.tools.runtime import ISO8061_DATE
+from salem.tools.runtime import runtime
+from salem.tools.runtime import runtime_callable
+from salem.tools.types import WebLink
+from salem.tools.types import WikiExtract
 
 
 browser = runtime.get_backend(Browser)
@@ -20,6 +21,7 @@ def _format_wiki(w: WikiExtract) -> str:
   )
 
 
+@runtime_callable
 def search_topk(query: str, k: int = 3) -> str:
   """Get top K search results for the given query (just like a desktop browser with a search engine).
 
@@ -40,6 +42,7 @@ def search_topk(query: str, k: int = 3) -> str:
   return f"No results found for search {query!r}"
 
 
+@runtime_callable
 def get_page_content(url: str) -> str:
   """Extract the readable content from the given page URL in the Markdown format.
   Use this to browse webpages.
@@ -55,6 +58,7 @@ def get_page_content(url: str) -> str:
   return browser.get_page_content(url)
 
 
+@runtime_callable
 def search_wiki(query: str, k: int = 3) -> str:
   """Get top K search results from Wikipedia for the given query.
 

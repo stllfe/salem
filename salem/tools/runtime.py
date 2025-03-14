@@ -14,10 +14,10 @@ from attrs import define
 from attrs import field
 from mako.template import Template
 
-from tools.core.backend import calendar
-from tools.core.backend import weather
-from tools.core.backend import web
-from tools.types import Language
+from salem.tools.core.backend import calendar
+from salem.tools.core.backend import weather
+from salem.tools.core.backend import web
+from salem.tools.types import Language
 
 
 ISO8061_DATE = "%Y-%m-%d"
@@ -134,6 +134,7 @@ def runtime_callable(fn: Callable) -> Callable:
   def wrapper(*args, **kwargs) -> Any:
     return call(fn, runtime, *args, **kwargs)
 
+  wrapper.__runtime_callable__ = True  # notify other parts that it's a runtime callable
   return wrapper
 
 

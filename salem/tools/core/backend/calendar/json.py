@@ -9,10 +9,10 @@ from tinydb import JSONStorage
 from tinydb import Query
 from tinydb import TinyDB
 
-from tools.core.backend.calendar.base import Calendar
-from tools.types import Event
-from tools.types import Reminder
-from tools.utils import DateTimeJsonEncoder
+from salem.tools.core.backend.calendar.base import Calendar
+from salem.tools.types import Event
+from salem.tools.types import Reminder
+from salem.tools.utils import DateTimeJsonEncoder
 
 
 @define

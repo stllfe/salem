@@ -1,12 +1,13 @@
 # noqa: A005
 from datetime import datetime
 
-from tools.core.backend.calendar import Calendar
-from tools.runtime import CURRENT
-from tools.runtime import ISO8061
-from tools.runtime import runtime
-from tools.types import Event
-from tools.types import Reminder
+from salem.tools.core.backend.calendar import Calendar
+from salem.tools.runtime import CURRENT
+from salem.tools.runtime import ISO8061
+from salem.tools.runtime import runtime
+from salem.tools.runtime import runtime_callable
+from salem.tools.types import Event
+from salem.tools.types import Reminder
 
 
 calendar = runtime.get_backend(Calendar)
@@ -20,6 +21,7 @@ def _format_reminder(r: Reminder) -> str:
   return f"Reminder [{r.uid}] @ {r.date.strftime(ISO8061)} - {r.message}"
 
 
+@runtime_callable
 def add_event(name: str, date: str, time: str, comment: str | None = None) -> str:
   """Add a new event to the user's calendar.
 
@@ -38,6 +40,7 @@ def add_event(name: str, date: str, time: str, comment: str | None = None) -> st
   return calendar.add_event(e)
 
 
+@runtime_callable
 def get_event(uid: str) -> str:
   """Get an event by this uid.
 
@@ -52,6 +55,7 @@ def get_event(uid: str) -> str:
   return _format_event(e)
 
 
+@runtime_callable
 def remove_event(uid: str) -> str:
   """Remove an event by this uid.
 
@@ -69,6 +73,7 @@ def remove_event(uid: str) -> str:
   return f"Event [{uid}] removed."
 
 
+@runtime_callable
 def edit_event(uid: str, date: str | None = None, time: str | None = None, comment: str | None = None) -> str:
   """Change some properties of an existing event.
 
@@ -89,6 +94,7 @@ def edit_event(uid: str, date: str | None = None, time: str | None = None, comme
   return f"Updated: {get_event(uid)}"
 
 
+@runtime_callable
 def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: str | None = None) -> str:
   """Get all events from the user's calendar.
 
@@ -112,6 +118,7 @@ def get_all_events(start: str = CURRENT.DATE, end: str = CURRENT.DATE, regex: st
   return "No events found for the given query."
 
 
+@runtime_callable
 def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> str:
   """Add a new reminder to the user's calendar.
 
@@ -129,6 +136,7 @@ def add_reminder(time: str, msg: str, date: str = CURRENT.DATE) -> str:
   return calendar.add_reminder(r)
 
 
+@runtime_callable
 def remove_reminder(uid: str) -> str:
   """Remove a reminder by this uid.
 
@@ -146,6 +154,7 @@ def remove_reminder(uid: str) -> str:
   return f"Reminder [{uid}] removed."
 
 
+@runtime_callable
 def get_reminder(uid: str) -> str:
   """Get a reminder by this uid.
 
@@ -160,6 +169,7 @@ def get_reminder(uid: str) -> str:
   return _format_reminder(r)
 
 
+@runtime_callable
 def get_all_reminders(date: str = CURRENT.DATE) -> str:
   """Get all reminders on the given date in the user's calendar.
 

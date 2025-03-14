@@ -3,8 +3,8 @@ from abc import ABC
 from abc import abstractmethod
 from datetime import datetime
 
-from tools.types import Event
-from tools.types import Reminder
+from salem.tools.types import Event
+from salem.tools.types import Reminder
 
 
 class Calendar(ABC):

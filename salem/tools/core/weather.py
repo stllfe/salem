@@ -1,8 +1,9 @@
-from src.utils import get_logger
-from tools.core.backend.weather import WeatherProvider
-from tools.runtime import CURRENT
-from tools.runtime import runtime
-from tools.types import Weather
+from salem.tools.core.backend.weather import WeatherProvider
+from salem.tools.runtime import CURRENT
+from salem.tools.runtime import runtime
+from salem.tools.runtime import runtime_callable
+from salem.tools.types import Weather
+from salem.utils import get_logger
 
 
 weather = runtime.get_backend(WeatherProvider)
@@ -15,6 +16,7 @@ def _format_weather(w: Weather) -> str:
   )
 
 
+@runtime_callable
 def get_weather(location: str = CURRENT.LOCATION) -> str:
   """Get the current weather conditions.
 
@@ -28,6 +30,7 @@ def get_weather(location: str = CURRENT.LOCATION) -> str:
   return f"Weather @ {w.location}: {_format_weather(w)}"
 
 
+@runtime_callable
 def get_forecast(days: int, location: str = CURRENT.LOCATION) -> str:
   """Get a weather forcast for the next several days.
 

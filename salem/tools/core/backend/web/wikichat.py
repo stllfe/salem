@@ -6,9 +6,9 @@ from attrs import define
 from attrs import field
 from requests import Session
 
-from tools.core.backend.web.base import SearchEngine
-from tools.types import Language
-from tools.types import WikiExtract
+from salem.tools.core.backend.web.base import SearchEngine
+from salem.tools.types import Language
+from salem.tools.types import WikiExtract
 
 
 URL = "https://search.genie.stanford.edu/wikipedia"

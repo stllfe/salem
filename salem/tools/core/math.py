@@ -2,6 +2,10 @@
 # https://saturncloud.io/blog/pythonnumpyscipy-converting-string-to-mathematical-function/
 
 
+from salem.tools.runtime import runtime_callable
+
+
+@runtime_callable
 def solve(expr: str, var: str | None = None) -> str:
   """Calculate the given math expression in the simplified Python-like notation.
 

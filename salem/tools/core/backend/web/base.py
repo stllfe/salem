@@ -13,10 +13,10 @@ from markdownify import markdownify
 from requests import Session
 from requests.auth import HTTPBasicAuth
 
-from tools.types import Language
-from tools.types import WebLink
-from tools.types import WikiExtract
-from tools.utils import truncate_content
+from salem.tools.types import Language
+from salem.tools.types import WebLink
+from salem.tools.types import WikiExtract
+from salem.tools.utils import truncate_content
 
 
 LINK_UID_PREFIX = "@"

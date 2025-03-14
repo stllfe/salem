@@ -2,8 +2,8 @@ from attrs import define
 from attrs import field
 from duckduckgo_search import DDGS
 
-from tools.core.backend.web.base import SearchEngine
-from tools.types import WebLink
+from salem.tools.core.backend.web.base import SearchEngine
+from salem.tools.types import WebLink
 
 
 @define
