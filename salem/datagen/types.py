@@ -13,7 +13,7 @@ from attrs import define
 from attrs import field
 from attrs import validators as V
 
-from src.utils import get_logger
+from salem.utils import get_logger
 
 
 SEED = int(getenv("SEED", "25512"))
@@ -93,7 +93,7 @@ class Instruction:
     return j2.Template(self.prompt, undefined=j2.StrictUndefined)
 
   def prepare(self, **context) -> list[dict[str, str]]:
-    from src.datagen.utils import dumps
+    from salem.datagen.utils import dumps
 
     history = []
     context.update(dumps=dumps)  # special utility for jsons

@@ -7,7 +7,7 @@ from typing import Any
 import orjsonl
 import yaml
 
-from src.datagen.types import Instruction
+from salem.datagen.types import Instruction
 
 
 def read_prompt(p: Path) -> Instruction:

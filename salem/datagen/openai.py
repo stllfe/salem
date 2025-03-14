@@ -12,9 +12,9 @@ from openai.types.chat import ChatCompletionMessageToolCall
 from tenacity import retry
 from tenacity import stop_after_attempt
 
-from src.datagen.types import GenerationArgs
-from src.utils import get_logger
-from src.utils import get_short_uid
+from salem.datagen.types import GenerationArgs
+from salem.utils import get_logger
+from salem.utils import get_short_uid
 
 
 logger = get_logger()
