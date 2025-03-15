@@ -5,12 +5,12 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-from tools.utils import get_public_functions
-from tools.utils import get_tool_schema
+from salem.tools.utils import get_public_functions
+from salem.tools.utils import get_tool_schema
 
 
 ROOT = Path(__file__).parent.parent
-CORE = ROOT.joinpath("tools").joinpath("core")
+CORE = ROOT.joinpath("salem").joinpath("tools").joinpath("core")
 DEST = ROOT.joinpath("data").joinpath("tools")
 
 

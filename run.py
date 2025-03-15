@@ -13,23 +13,23 @@ from loguru import logger
 
 load_dotenv(".env")
 
-from src.datagen import config
-from src.datagen import openai
-from tools.runtime import CURRENT
-from tools.runtime import call
-from tools.runtime import runtime
-from tools.types import JsonMixin
-from tools.utils import DateTimeJsonEncoder
-from tools.utils import get_public_functions
-from tools.utils import get_tool_schema
+from salem.datagen import config
+from salem.datagen import openai
+from salem.tools.runtime import CURRENT
+from salem.tools.runtime import call
+from salem.tools.runtime import runtime
+from salem.tools.types import JsonMixin
+from salem.tools.utils import DateTimeJsonEncoder
+from salem.tools.utils import get_public_functions
+from salem.tools.utils import get_tool_schema
 
 
 MODEL: str = config.MODEL
 OPENAI_FORMAT: bool = bool(int(os.getenv("OPENAI_FORMAT", "1")))
 
-from tools.core import calendar
-from tools.core import weather
-from tools.core import web
+from salem.tools.core import calendar
+from salem.tools.core import weather
+from salem.tools.core import web
 
 
 USED_MODULES: list[ModuleType] = [

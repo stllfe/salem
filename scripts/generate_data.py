@@ -16,14 +16,14 @@ from attrs import validators as V
 from pydantic import BaseModel
 from pydantic import TypeAdapter
 
-from src.datagen import GenerationArgs
-from src.datagen import Language
-from src.datagen import utils
-from src.datagen.config import get_default_generation
-from src.datagen.openai import APIArgs
-from src.datagen.openai import generate
-from src.datagen.openai import get_client
-from src.utils import get_logger
+from salem.datagen import GenerationArgs
+from salem.datagen import Language
+from salem.datagen import utils
+from salem.datagen.config import get_default_generation
+from salem.datagen.openai import APIArgs
+from salem.datagen.openai import generate
+from salem.datagen.openai import get_client
+from salem.utils import get_logger
 
 
 ROOT = Path(__file__).parent.parent

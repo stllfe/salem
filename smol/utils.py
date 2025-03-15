@@ -3,8 +3,8 @@ from typing import Any
 
 from smolagents import Tool
 
-from tools.runtime import call
-from tools.runtime import runtime
+from salem.tools.runtime import call
+from salem.tools.runtime import runtime
 
 
 def convert_to_tool(fn: Callable) -> Tool:
@@ -15,6 +15,8 @@ def convert_to_tool(fn: Callable) -> Tool:
   @tool
   @wraps(fn)
   def wrapper(*args, **kwargs) -> Any:
+    if hasattr(fn, "__runtime_callable__"):
+      return fn(*args, **kwargs)
     return call(fn, runtime, *args, **kwargs)
 
   return wrapper

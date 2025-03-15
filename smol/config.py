@@ -24,3 +24,4 @@ match os.getenv("MODEL"):
 
 
 MAX_WEB_STEPS = 5
+MAX_CALENDAR_STEPS = 3

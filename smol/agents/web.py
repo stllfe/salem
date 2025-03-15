@@ -1,9 +1,9 @@
 from smolagents import ToolCallingAgent
 
-from smol.config import model
+from salem.tools.core import web
+from salem.tools.utils import get_public_functions
+from smol import config
 from smol.utils import convert_to_tool
-from tools.core import web
-from tools.utils import get_public_functions
 
 
 tools = [convert_to_tool(fn) for fn in get_public_functions(web)]
@@ -11,8 +11,8 @@ tools = [convert_to_tool(fn) for fn in get_public_functions(web)]
 
 browser = ToolCallingAgent(
   tools=tools,
-  model=model,
-  max_steps=10,
+  model=config.model,
+  max_steps=config.MAX_WEB_STEPS,
   name="browser",
   description="Runs web searches for you. Give it your query as an argument.",
 )

@@ -5,11 +5,11 @@ import yaml
 
 from smolagents import CodeAgent
 
+from salem.tools.runtime import CURRENT
+from salem.tools.runtime import runtime
 from smol.agents.calendar import calendar
 from smol.agents.web import browser
 from smol.config import model
-from tools.runtime import CURRENT
-from tools.runtime import runtime
 
 
 CODE_AGENT_PROMPTS = yaml.safe_load(

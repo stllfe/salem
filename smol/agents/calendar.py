@@ -1,10 +1,10 @@
 # noqa: A005
 from smolagents import ToolCallingAgent
 
-from smol.config import model
+from salem.tools.core import calendar
+from salem.tools.utils import get_public_functions
+from smol import config
 from smol.utils import convert_to_tool
-from tools.core import calendar
-from tools.utils import get_public_functions
 
 
 tools = [convert_to_tool(fn) for fn in get_public_functions(calendar)]
@@ -12,8 +12,8 @@ tools = [convert_to_tool(fn) for fn in get_public_functions(calendar)]
 
 calendar = ToolCallingAgent(
   tools=tools,
-  model=model,
-  max_steps=10,
+  model=config.model,
+  max_steps=config.MAX_CALENDAR_STEPS,
   name="calendar",
   description="Manages your events and reminders. Give it your query as an argument.",
 )
