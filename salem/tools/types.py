@@ -1,7 +1,12 @@
 # noqa: A005
+import operator as op
+
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Self
+from itertools import chain
+from typing import Generic, Iterator, Literal, NamedTuple, Self, TypeVar
+from zoneinfo import ZoneInfo
 
 import orjson
 
@@ -39,7 +44,9 @@ class JsonMixin:
     return cls(**data)
 
 
-def convert_datetime(dt: datetime | str) -> datetime:
+def convert_datetime(dt: datetime | str | int) -> datetime:
+  if isinstance(dt, int):
+    return datetime.fromtimestamp(dt)
   if isinstance(dt, str):
     return datetime.fromisoformat(dt)
   return dt
@@ -84,8 +91,23 @@ class WikiExtract(JsonMixin):
 
 
 @frozen
+class LocationInfo(JsonMixin):
+  name: str
+  country: str
+  latitude: float
+  longitude: float
+  timezone: str
+
+  @property
+  def tz(self) -> ZoneInfo:
+    return ZoneInfo(self.timezone)
+
+  def __str__(self) -> str:
+    return f"{self.name}, {self.country} ({self.timezone})".title()
+
+
+@frozen
 class Weather(JsonMixin):
-  location: str
   temperature: float
 
   feels_like: float
@@ -106,20 +128,60 @@ class Weather(JsonMixin):
   """Temperature units (celsius or fahrenheit)"""
 
 
+class DailyWeather(NamedTuple):
+  morning: Weather
+  daytime: Weather
+  evening: Weather
+
+
+T = TypeVar("T")
+
+
+@frozen
+class Aggregate(Generic[T]):
+  values: Sequence[T] = field(converter=list)
+
+  def min(self) -> T:
+    return min(self.values)
+
+  def max(self) -> T:
+    return max(self.values)
+
+  def avg(self) -> T:
+    return sum(self.values) / len(self.values)
+
+
 @frozen
 class WeatherForecast(JsonMixin):
-  location: str
-  forecast: list[Weather]
+  location: LocationInfo
+  daily: list[DailyWeather] = field(repr=lambda _: "[...]")
+
+  def __iter__(self) -> Iterator[Weather]:
+    return chain.from_iterable(map(iter, self.daily))
+
+  def __len__(self) -> int:
+    return len(self.daily)
 
   @property
   def days(self) -> int:
-    return len(self.forecast)
+    dt = self.end_date - self.start_date
+    return dt.days + 1  # including current
 
-  def min(self, attr: str) -> float:
-    pass
+  @property
+  def start_date(self) -> datetime:
+    return self.daily[0].morning.date
 
-  def max(self, attr: str) -> float:
-    pass
+  @property
+  def end_date(self) -> datetime:
+    return self.daily[-1].evening.date
 
-  def avg(self, attr: str) -> float:
-    pass
+  def get(self, prop: str, only: Literal["morning", "daytime", "evening"] | None = None) -> Aggregate[float]:
+    if only:
+      points = map(op.attrgetter(only), self.daily)
+    else:
+      points = iter(self)
+    points = list(points)
+    values = list(map(op.attrgetter(prop), points))
+    types = set(map(type, values))
+    assert len(types) == 1 and types.pop() is float, f"Expected prop argument to be a float value, got: {types[0]}"
+    return Aggregate(values)

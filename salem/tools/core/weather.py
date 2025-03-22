@@ -1,7 +1,10 @@
 from salem.tools.core.backend.weather import WeatherProvider
 from salem.tools.runtime import CURRENT
+from salem.tools.runtime import ISO8061
+from salem.tools.runtime import ISO8061_DATE
 from salem.tools.runtime import runtime
 from salem.tools.runtime import runtime_callable
+from salem.tools.types import DailyWeather
 from salem.tools.types import Weather
 from salem.utils import get_logger
 
@@ -11,9 +14,12 @@ logger = get_logger()
 
 
 def _format_weather(w: Weather) -> str:
-  return (
-    f"[{w.date}] @ {w.temperature:.2f} {w.units}°; humidity {w.humidity:.2f}%; wind: {w.wind_speed:.2f} metres/seconds"  # noqa
-  )
+  return f"[{w.date.strftime(ISO8061)}] @ temperature: {w.temperature:.2f} {w.units.name}°, humidity {w.humidity:.2f}%, wind: {w.wind_speed:.2f} m/s"  # noqa
+
+
+def _format_daily(d: DailyWeather) -> str:
+  date = d.morning.date.strftime(ISO8061_DATE)
+  return f"[{date}] @ temperature {d.daytime.units.name}° | morning: {d.morning.temperature:.2f}, daytime: {d.daytime.temperature:.2f}, evening: {d.daytime.temperature:.2f}"  # noqa
 
 
 @runtime_callable
@@ -24,10 +30,9 @@ def get_weather(location: str = CURRENT.LOCATION) -> str:
     location: What location to get the weather for (current by default)
   """
 
-  w = weather.get_weather(location)
-  logger.debug(f"weather call:\n{w!r}")
-
-  return f"Weather @ {w.location}: {_format_weather(w)}"
+  info = weather.get_location(location)
+  w = weather.get_weather(info)
+  return f"Weather @ {info}: {_format_weather(w)}"
 
 
 @runtime_callable
@@ -44,7 +49,8 @@ def get_forecast(days: int, location: str = CURRENT.LOCATION) -> str:
     ValueError: If the amount of days is not between 1 and 21
   """
 
-  if forecast := weather.get_forecast(days, location):
-    title = f"Weather forcast for {days} days in {location}:\n- "
-    return title + "- ".join([_format_weather(w) + "\n" for w in forecast])
-  return "No events found for the given query."
+  info = weather.get_location(location)
+  if forecast := weather.get_forecast(info, days):
+    title = f"Weather forcast for {forecast.days} days in {forecast.location}:\n- "
+    return title + "- ".join([_format_daily(d) + "\n" for d in forecast.daily])
+  return "No forecast found for the given query."
