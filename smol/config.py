@@ -15,7 +15,7 @@ trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint)
 SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
 
 match os.getenv("MODEL"):
-  case "gpt4o":
+  case "gpt-4o":
     model = OpenAIServerModel("gpt-4o", api_key=os.environ["OPENAI_API_KEY"])
   case "claude":
     model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key=os.environ["ANTHROPIC_API_KEY"])
