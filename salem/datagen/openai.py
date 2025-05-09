@@ -12,7 +12,7 @@ from openai.types.chat import ChatCompletionMessageToolCall
 from tenacity import retry
 from tenacity import stop_after_attempt
 
-from salem.datagen.types import GenerationArgs
+from salem.datagen.types import GenerationParams
 from salem.utils import get_logger
 from salem.utils import get_short_uid
 
@@ -41,7 +41,7 @@ class FunctionCall:
   name: str
   args: dict[str, Any]
 
-  def dump(self) -> dict[str, str]:
+  def dump(self) -> dict[str, Any]:
     return {
       "id": self.id,
       "type": "function",
@@ -85,37 +85,37 @@ def get_fn_call_from_openai(tool_calls: list[ChatCompletionMessageToolCall]) -> 
 @retry(stop=stop_after_attempt(MAX_TRIES), reraise=True)
 async def generate(
   messages: list[dict],
-  llm: AsyncClient,
+  client: AsyncClient,
   *,
-  gen: GenerationArgs,
+  params: GenerationParams,
   api: APIArgs,
   json_schema: dict | None = None,
   tools: list[str] | None = None,
-) -> str | tuple[str, list[FunctionCall]]:
+) -> str | None | tuple[str | None, list[FunctionCall]]:
   extra = {}
   is_openai_call = "api.openai.com" in api.base_url
   if is_openai_call:
     logger.warning("OpenAI endpoint detected, ommiting extra generation params!", once=True)
   else:
     extra.update(
-      top_k=gen.top_k,
-      min_p=gen.min_p,
-      min_tokens=gen.min_tokens,
-      repetition_penalty=gen.repetition_penalty,
+      top_k=params.top_k,
+      min_p=params.min_p,
+      min_tokens=params.min_tokens,
+      repetition_penalty=params.repetition_penalty,
     )
   if json_schema and not is_openai_call:
     extra.update(guided_json=json_schema, guided_decoding_backend=DECODING_BACKEND)
   # TODO: make adjustments for OpenAI API to utilize all the features possible
-  response = await llm.chat.completions.create(
+  response = await client.chat.completions.create(
     messages=messages,
     model=api.model,
-    top_p=gen.top_p,
-    temperature=gen.temperature,
-    frequency_penalty=gen.frequency_penalty,
-    presence_penalty=gen.presence_penalty,
-    max_tokens=gen.max_tokens,
-    seed=gen.seed,
-    stop=gen.stop,
+    top_p=params.top_p,
+    temperature=params.temperature,
+    frequency_penalty=params.frequency_penalty,
+    presence_penalty=params.presence_penalty,
+    max_tokens=params.max_tokens,
+    seed=params.seed,
+    stop=params.stop,
     extra_body=extra,
     tools=tools,
   )

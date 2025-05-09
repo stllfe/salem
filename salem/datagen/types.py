@@ -27,7 +27,7 @@ logger = get_logger()
 
 
 @define
-class GenerationArgs:
+class GenerationParams:
   """Generation parameters for LLM."""
 
   min_tokens: int = 0
@@ -45,13 +45,13 @@ class GenerationArgs:
 
 @define
 class ModelDefaults:
-  gen: GenerationArgs = field(factory=GenerationArgs)
-  system: str = field(default=SYSTEM)
+  gen: GenerationParams = field(factory=GenerationParams)
+  sys: str = field(default=SYSTEM)
 
 
 DEFAULTS: dict[str | re.Pattern, ModelDefaults] = {
   re.compile(r"qwen/Qwen2.5-(?:Coder-)?\d{1,2}B-(?:Instruct)?"): ModelDefaults(
-    gen=GenerationArgs(
+    gen=GenerationParams(
       temperature=0.7,
       top_p=0.8,
       min_p=0.15,
@@ -73,18 +73,20 @@ def get_defaults(model: str | None = None) -> ModelDefaults:
   return ModelDefaults()
 
 
-def get_default_generation(model: str | None = None) -> GenerationArgs:
+def get_default_generation_params(model: str | None = None) -> GenerationParams:
   defs = get_defaults(model)
   return defs.gen
 
 
 def get_default_system_prompt(model: str | None = None) -> str:
   defs = get_defaults(model)
-  return defs.system
+  return defs.sys
 
 
 @define
 class Instruction:
+  """A one-off prompt to generate a single-turn chat completion response."""
+
   prompt: str = field(validator=V.min_len(1))
   system: str | None = field(factory=get_default_system_prompt)
 

@@ -16,10 +16,10 @@ from attrs import validators as V
 from pydantic import BaseModel
 from pydantic import TypeAdapter
 
-from salem.datagen import GenerationArgs
+from salem.datagen import GenerationParams
 from salem.datagen import Language
 from salem.datagen import utils
-from salem.datagen.config import get_default_generation
+from salem.datagen.config import get_default_generation_params
 from salem.datagen.openai import APIArgs
 from salem.datagen.openai import generate
 from salem.datagen.openai import get_client
@@ -49,7 +49,7 @@ class BaseArgs:
   """how many requests to run in parallel."""
 
   api: APIArgs = field(factory=APIArgs)
-  gen: GenerationArgs = field(factory=get_default_generation)
+  gen: GenerationParams = field(factory=get_default_generation_params)
 
 
 @define
@@ -141,7 +141,7 @@ def generate_cases(args: CasesArgs) -> None:
     messages = prompt.prepare(**tool, tools=names, num_cases=args.num_cases, language=args.language)
     async with njobs:
       try:
-        result = await generate(messages, llm, gen=args.gen, api=args.api, json_schema=schema)
+        result = await generate(messages, llm, params=args.gen, api=args.api, json_schema=schema)
         parsed = list(map(Case.model_dump, Cases.validate_json(result)))
         await append_jsonl({"name": name, "cases": parsed}, args.dest, lock=lock)
       except Exception as err:

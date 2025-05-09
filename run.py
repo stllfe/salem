@@ -136,7 +136,7 @@ if MODEL.startswith("gpt"):
 else:
   api = openai.APIArgs(base_url="http://localhost:3000/v1")
 
-gen = config.get_default_generation(MODEL)
+gen = config.get_default_generation_params(MODEL)
 llm = openai.get_client(api)
 
 
@@ -165,7 +165,7 @@ async def chat() -> None:
             raise ValueError(f"unknown command: {user.strip()}")
         continue
       history.append({"role": "user", "content": user})
-    answer = await openai.generate(history, llm, api=api, gen=gen, tools=TOOL_SCHEMAS)
+    answer = await openai.generate(history, llm, api=api, params=gen, tools=TOOL_SCHEMAS)
     if isinstance(answer, str):
       print("A:", answer)
       history.append({"role": "assistant", "content": answer})
