@@ -18,7 +18,7 @@ match os.getenv("MODEL"):
   case "gpt-4o":
     model = OpenAIServerModel("gpt-4o", api_key=os.environ["OPENAI_API_KEY"])
   case "claude":
-    model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key=os.environ["ANTHROPIC_API_KEY"])
+    model = LiteLLMModel(model_id="anthropic/claude-3-7-sonnet-latest", api_key=os.environ["ANTHROPIC_API_KEY"])
   case _:
     model = OpenAIServerModel("default", api_base="http://localhost:3000/v1", api_key="[EMPTY]", tool_choice="auto")
 

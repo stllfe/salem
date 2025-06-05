@@ -150,7 +150,7 @@ def remove_reminder(uid: str) -> str:
     A string status of the reminder removal
   """
 
-  calendar.remove_event(uid)
+  calendar.remove_reminder(uid)
   return f"Reminder [{uid}] removed."
 
 

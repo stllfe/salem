@@ -128,7 +128,7 @@ class Weather(JsonMixin):
   """Temperature units (celsius or fahrenheit)"""
 
 
-class DailyWeather(NamedTuple):
+class DayWeather(NamedTuple):
   morning: Weather
   daytime: Weather
   evening: Weather
@@ -154,7 +154,7 @@ class Aggregate(Generic[T]):
 @frozen
 class WeatherForecast(JsonMixin):
   location: LocationInfo
-  daily: list[DailyWeather] = field(repr=lambda _: "[...]")
+  daily: list[DayWeather] = field(repr=lambda _: "[...]")
 
   def __iter__(self) -> Iterator[Weather]:
     return chain.from_iterable(map(iter, self.daily))
@@ -163,7 +163,7 @@ class WeatherForecast(JsonMixin):
     return len(self.daily)
 
   @property
-  def days(self) -> int:
+  def num_days(self) -> int:
     dt = self.end_date - self.start_date
     return dt.days + 1  # including current
 

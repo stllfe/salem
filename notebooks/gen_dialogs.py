@@ -8,7 +8,7 @@ from salem.datagen import config
 from salem.datagen import utils
 from salem.datagen.openai import APIArgs
 from salem.datagen.openai import AsyncClient
-from salem.datagen.openai import GenerationArgs
+from salem.datagen.openai import GenerationParams
 from salem.datagen.openai import generate
 
 
@@ -52,7 +52,7 @@ if MODEL.startswith("gpt"):
   )
 else:
   api = APIArgs(base_url="http://localhost:3000/v1")
-gen = GenerationArgs(
+gen = GenerationParams(
   min_tokens=0,
   max_tokens=2048,
   temperature=0.9,
@@ -85,5 +85,5 @@ messages = prompt.prepare(
   case=case,
   tools=tools + more,
 )
-answer = asyncio.run(generate(messages, llm, gen=gen, api=api))
+answer = asyncio.run(generate(messages, llm, params=gen, api=api))
 print(answer)

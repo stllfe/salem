@@ -12,7 +12,7 @@ from openmeteo_sdk.WeatherApiResponse import WeatherApiResponse
 from requests import Session
 
 from salem.tools.core.backend.weather.base import WeatherProvider
-from salem.tools.types import DailyWeather
+from salem.tools.types import DayWeather
 from salem.tools.types import Language
 from salem.tools.types import LocationInfo
 from salem.tools.types import TempUnit
@@ -123,7 +123,7 @@ class OpenMeteoWeatherProvider(WeatherProvider):
       ),
     })
     data = data[data.date.dt.hour.isin([6, 12, 18])]  # keep only: morning, daytime, evening measurements
-    daily: list[DailyWeather] = []
+    daily: list[DayWeather] = []
     for _, values in data.groupby(data.date.dt.date):
       values = values.sort_values("date")
       day: list[Weather] = []
@@ -139,13 +139,13 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             units=v.units,
           )
         )
-      daily.append(DailyWeather(*day))
+      daily.append(DayWeather(*day))
     return WeatherForecast(location=location, daily=daily[:days])
 
 
-# if __name__ == "__main__":
-#   wp = OpenMeteoWeatherProvider()
-#   loc = wp.get_location("Moscow")
-#   foc = wp.get_forecast(loc)
-#   tmp = foc.get("temperature")
-#   print(tmp.avg())
+if __name__ == "__main__":
+  wp = OpenMeteoWeatherProvider()
+  loc = wp.get_location("Moscow")
+  foc = wp.get_forecast(loc)
+  tmp = foc.get("temperature")
+  print(tmp.avg())
