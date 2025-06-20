@@ -1,12 +1,15 @@
 # copied from
-# https://github.com/airockchip/rknn-llm/blob/cb5b341364311065fd19eddd631a79a9f0c5afe1/examples/rkllm_server_demo/rkllm_server/flask_server.py#L231
+# https://github.com/airockchip/rknn-llm/blob/8a4962842f2acf73a0f6f994a6c2e94a2cdfa075/examples/rkllm_server_demo/rkllm_server/flask_server.py
 
 import ctypes
+import os
 import sys
 
 
+lib_path = os.path.join(os.path.dirname(__file__), "lib", "librkllmrt.so")
+
 # Set the dynamic library path
-rkllm_lib = ctypes.CDLL("lib/librkllmrt.so")
+rkllm_lib = ctypes.CDLL(lib_path)
 
 # Define the structures from the library
 RKLLM_Handle_t = ctypes.c_void_p
@@ -81,6 +84,9 @@ class RKLLMMultiModelInput(ctypes.Structure):
     ("prompt", ctypes.c_char_p),
     ("image_embed", ctypes.POINTER(ctypes.c_float)),
     ("n_image_tokens", ctypes.c_size_t),
+    ("n_image", ctypes.c_size_t),
+    ("image_width", ctypes.c_size_t),
+    ("image_height", ctypes.c_size_t),
   ]
 
 
@@ -136,7 +142,7 @@ class RKLLMResult(ctypes.Structure):
 
 
 # Define global variables to store the callback function output for displaying in the Gradio interface
-global_text = ""
+global_text = []
 global_state = -1
 split_byte_data = bytes(b"")  # Used to store the segmented byte data
 
@@ -144,17 +150,58 @@ split_byte_data = bytes(b"")  # Used to store the segmented byte data
 # Define the callback function
 def callback_impl(result, userdata, state):
   global global_text, global_state, split_byte_data
+  # print(f"{state=}")
   if state == LLMCallState.RKLLM_RUN_FINISH:
     global_state = state
-    print("\n")
+    print("\n")  # helpful when RKLLM_LOG_LEVEL is set and stats are printed right after the response
     sys.stdout.flush()
   elif state == LLMCallState.RKLLM_RUN_ERROR:
     global_state = state
     print("run error")
     sys.stdout.flush()
-  elif state == LLMCallState.RKLLM_RUN_NORMAL:
+  # elif state == LLMCallState.RKLLM_RUN_GET_LAST_HIDDEN_LAYER:
+  #   """
+  #       If using the GET_LAST_HIDDEN_LAYER function, the callback interface will return the memory pointer: last_hidden_layer, the number of tokens: num_tokens, and the size of the hidden layer: embd_size.
+  #       With these three parameters, you can retrieve the data from last_hidden_layer.
+  #       Note: The data needs to be retrieved during the current callback; if not obtained in time, the pointer will be released by the next callback.
+  #       """
+  #   if result.last_hidden_layer.embd_size != 0 and result.last_hidden_layer.num_tokens != 0:
+  #     data_size = (
+  #       result.last_hidden_layer.embd_size * result.last_hidden_layer.num_tokens * ctypes.sizeof(ctypes.c_float)
+  #     )
+  #     print(f"data_size: {data_size}")
+  #     global_text.append(f"data_size: {data_size}\n")
+  #     output_path = os.getcwd() + "/last_hidden_layer.bin"
+  #     with open(output_path, "wb") as outFile:
+  #       data = ctypes.cast(result.last_hidden_layer.hidden_states, ctypes.POINTER(ctypes.c_float))
+  #       float_array_type = ctypes.c_float * (data_size // ctypes.sizeof(ctypes.c_float))
+  #       float_array = float_array_type.from_address(ctypes.addressof(data.contents))
+  #       outFile.write(bytearray(float_array))
+  #       print(f"Data saved to {output_path} successfully!")
+  #       global_text.append(f"Data saved to {output_path} successfully!")
+  #   else:
+  #     print("Invalid hidden layer data.")
+  #     global_text.append("Invalid hidden layer data.")
+  #   global_state = state
+  #   time.sleep(0.05)
+  #   sys.stdout.flush()
+  else:
+    # Save the output token text and the RKLLM running state
     global_state = state
-    global_text += result.contents.text.decode("utf-8")
+    # Monitor if the current byte data is complete; if incomplete, record it for later parsing
+    try:
+      if split_byte_data is None or split_byte_data == "":
+        global_text.append((b"" + result.contents.text).decode("utf-8"))
+        # print((split_byte_data + result.contents.text).decode("utf-8"), end="")
+        split_byte_data = bytes(b"")
+      else:
+        global_text.append((split_byte_data + result.contents.text).decode("utf-8"))
+        # print((split_byte_data + result.contents.text).decode("utf-8"), end="")
+        split_byte_data = bytes(b"")
+    except:
+      if result.contents.text is not None:
+        split_byte_data += result.contents.text
+    sys.stdout.flush()
 
 
 # Connect the callback function between the Python side and the C++ side
@@ -213,11 +260,16 @@ class RKLLM(object):
     self.set_chat_template.argtypes = [RKLLM_Handle_t, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
     self.set_chat_template.restype = ctypes.c_int
 
-    # FIXME: why it's ommited?
-    system_prompt = "<|im_start|>system You are a helpful assistant. <|im_end|>"
-    prompt_prefix = "<|im_start|>user"
-    prompt_postfix = "<|im_end|><|im_start|>assistant"
-    # self.set_chat_template(self.handle, ctypes.c_char_p(system_prompt.encode('utf-8')), ctypes.c_char_p(prompt_prefix.encode('utf-8')), ctypes.c_char_p(prompt_postfix.encode('utf-8')))
+    # system_prompt = "<|im_start|>system You are a helpful assistant. <|im_end|>"
+    # prompt_prefix = "<|im_start|>user"
+    # prompt_postfix = "<|im_end|><|im_start|>assistant"
+    # self.set_chat_template(self.handle, "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n", "<|im_start|>user\n", "/no_think<|im_end|>\n<|im_start|>assistant\n");
+    # self.set_chat_template(
+    #   self.handle,
+    #   ctypes.c_char_p(system_prompt.encode("utf-8")),
+    #   ctypes.c_char_p(prompt_prefix.encode("utf-8")),
+    #   ctypes.c_char_p(prompt_postfix.encode("utf-8")),
+    # )
 
     self.rkllm_destroy = rkllm_lib.rkllm_destroy
     self.rkllm_destroy.argtypes = [RKLLM_Handle_t]
@@ -254,12 +306,54 @@ class RKLLM(object):
       rkllm_load_prompt_cache.restype = ctypes.c_int
       rkllm_load_prompt_cache(self.handle, ctypes.c_char_p((prompt_cache_path).encode("utf-8")))
 
-  def run(self, prompt):
+  def run(self, prompt: str) -> None:
     rkllm_input = RKLLMInput()
     rkllm_input.input_mode = RKLLMInputMode.RKLLM_INPUT_PROMPT
     rkllm_input.input_data.prompt_input = ctypes.c_char_p(prompt.encode("utf-8"))
     self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)
     return
 
-  def release(self):
+  def release(self) -> None:
     self.rkllm_destroy(self.handle)
+
+  # def get_RKLLM_output(self, message, history):
+  #   # Link global variables to retrieve the output information from the callback function
+  #   global global_text, global_state
+  #   global_text = []
+  #   global_state = -1
+  #   user_prompt = {"role": "user", "content": message}
+  #   history.append(user_prompt)
+  #   # Gemma 2 does not support system prompt.
+  #   if self.system_prompt == "":
+  #     prompt = [user_prompt]
+  #   else:
+  #     prompt = [{"role": "system", "content": self.system_prompt}, user_prompt]
+  #   # print(prompt)
+  #   TOKENIZER_PATH = "%s/%s" % (MODEL_PATH, self.st_model_id.replace("/", "-"))
+  #   if not os.path.exists(TOKENIZER_PATH):
+  #     print("Tokenizer not cached locally, downloading to %s" % TOKENIZER_PATH)
+  #     os.mkdir(TOKENIZER_PATH)
+  #     tokenizer = AutoTokenizer.from_pretrained(self.st_model_id, trust_remote_code=True)
+  #     tokenizer.save_pretrained(TOKENIZER_PATH)
+  #   else:
+  #     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH, trust_remote_code=True)
+  #   prompt = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_prompt=True)
+  #   # response = {"role": "assistant", "content": "Loading..."}
+  #   response = {"role": "assistant", "content": ""}
+  #   history.append(response)
+  #   model_thread = threading.Thread(target=self.run, args=(prompt,))
+  #   model_thread.start()
+  #   model_thread_finished = False
+  #   while not model_thread_finished:
+  #     while len(global_text) > 0:
+  #       response["content"] += global_text.pop(0)
+  #       # Marco-o1
+  #       response["content"] = str(response["content"]).replace("<Thought>", "\\<Thought\\>")
+  #       response["content"] = str(response["content"]).replace("</Thought>", "\\<\\/Thought\\>")
+  #       response["content"] = str(response["content"]).replace("<Output>", "\\<Output\\>")
+  #       response["content"] = str(response["content"]).replace("</Output>", "\\<\\/Output\\>")
+  #       time.sleep(0.005)
+  #       # Gradio automatically pushes the result returned by the yield statement when calling the then method
+  #       yield response
+  #     model_thread.join(timeout=0.005)
+  #     model_thread_finished = not model_thread.is_alive()
