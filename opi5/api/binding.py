@@ -1,9 +1,12 @@
-# copied from
+# modified from
 # https://github.com/airockchip/rknn-llm/blob/8a4962842f2acf73a0f6f994a6c2e94a2cdfa075/examples/rkllm_server_demo/rkllm_server/flask_server.py
+# https://github.com/c0zaut/RKLLM-Gradio/blob/4e01042e8f0fdf2e57d83525750a44370ad91a21/model_class.py
 
 import ctypes
 import os
 import sys
+
+from pathlib import Path
 
 
 lib_path = os.path.join(os.path.dirname(__file__), "lib", "librkllmrt.so")
@@ -142,7 +145,7 @@ class RKLLMResult(ctypes.Structure):
 
 
 # Define global variables to store the callback function output for displaying in the Gradio interface
-global_text = []
+global_text: list[str] = []
 global_state = -1
 split_byte_data = bytes(b"")  # Used to store the segmented byte data
 
@@ -209,11 +212,16 @@ callback_type = ctypes.CFUNCTYPE(None, ctypes.POINTER(RKLLMResult), ctypes.c_voi
 callback = callback_type(callback_impl)
 
 
+StrOrPath = str | Path
+
+
 # Define the RKLLM class, which includes initialization, inference, and release operations for the RKLLM model in the dynamic library
 class RKLLM(object):
-  def __init__(self, model_path, lora_model_path=None, prompt_cache_path=None):
+  def __init__(
+    self, model_path: StrOrPath, lora_model_path: StrOrPath | None = None, prompt_cache_path: StrOrPath | None = None
+  ) -> None:
     rkllm_param = RKLLMParam()
-    rkllm_param.model_path = bytes(model_path, "utf-8")
+    rkllm_param.model_path = bytes(str(model_path), "utf-8")
 
     rkllm_param.max_context_len = 4096
     rkllm_param.max_new_tokens = -1
@@ -306,16 +314,28 @@ class RKLLM(object):
       rkllm_load_prompt_cache.restype = ctypes.c_int
       rkllm_load_prompt_cache(self.handle, ctypes.c_char_p((prompt_cache_path).encode("utf-8")))
 
-  def run(self, prompt: str) -> None:
+  # TODO: add type hints
+  def tokens_to_ctypes_array(self, tokens, ctype) -> type:
+    # Converts a Python list to a ctypes array.
+    # The tokenizer outputs as a Python list.
+    return (ctype * len(tokens))(*tokens)
+
+  def run(self, prompt: str | list[int]) -> None:
     rkllm_input = RKLLMInput()
-    rkllm_input.input_mode = RKLLMInputMode.RKLLM_INPUT_PROMPT
-    rkllm_input.input_data.prompt_input = ctypes.c_char_p(prompt.encode("utf-8"))
+    if isinstance(prompt, str):
+      rkllm_input.input_mode = RKLLMInputMode.RKLLM_INPUT_PROMPT
+      rkllm_input.input_data.prompt_input = ctypes.c_char_p(prompt.encode("utf-8"))
+    else:
+      rkllm_input.input_mode = RKLLMInputMode.RKLLM_INPUT_TOKEN
+      rkllm_input.input_data.token_input.input_ids = self.tokens_to_ctypes_array(prompt, ctypes.c_int)
+      rkllm_input.input_data.token_input.n_tokens = ctypes.c_ulong(len(prompt))
     self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)
     return
 
   def release(self) -> None:
     self.rkllm_destroy(self.handle)
 
+  # NOTE: this is moved to a higher-level API in rkllm.py
   # def get_RKLLM_output(self, message, history):
   #   # Link global variables to retrieve the output information from the callback function
   #   global global_text, global_state
