@@ -1,0 +1,22 @@
+# a simplified version inspired by:
+# https://github.com/NotPunchnox/rkllama/blob/d503b5a493c21b7a4cfed2cd6df6b951b5902489/documentation/api/model_naming.md
+
+models_dir: ${oc.env:RKLLM_MODELS_DIR,${oc.env:USER}/rkllm_models}
+cache_dir: ${models_dir}/.cache/
+models:
+  - family: qwen2.5
+    size: 3B
+    hf_path: c01zaut/Qwen2.5-3B-Instruct-rk3588-1.1.1
+    filename: Qwen2.5-3B-Instruct-rk3588-w8a8-opt-1-hybrid-ratio-0.0.rkllm
+  - family: qwen2.5
+    size: 1.5B
+    hf_path: c01zaut/Qwen2.5-1.5B-Instruct-rk3588-1.1.1
+    filename: Qwen2.5-1.5B-Instruct-rk3588-w8a8-opt-1-hybrid-ratio-0.0.rkllm
+  - family: qwen3
+    size: 4B
+    hf_path: dulimov/Qwen3-4B-rk3588-1.2.1-unsloth-16k
+    filename: Qwen3-4B-rk3588-w8a8-opt-1-hybrid-ratio-0.0.rkllm
+  - family: qwen3
+    size: 1.7B
+    hf_path: dulimov/Qwen3-1.7B-rk3588-1.2.1-unsloth-16k
+    filename: Qwen3-1.7B-rk3588-w8a8-opt-1-hybrid-ratio-0.0.rkllm
