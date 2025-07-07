@@ -6,49 +6,32 @@ import time
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
 
 import msgspec
 
 from loguru import logger
 
 from api.binding import RKLLM
+from api.utils import ModelInfo
+from api.utils import Serializable
+from api.utils import model_registry
 
 
-API_POLL_DELAY = 0.005
+CAPI_POLL_DELAY = 0.005
+MAX_SUPPORTED_CONTEXT_LENGTH = 16384
 
 StrOrPath = str | Path
 
 
-class Serializable(msgspec.Struct):
-  """Adds serialization methods to a basic `msgspec.Struct`"""
-
-  def asjson(self) -> bytes:
-    from msgspec.json import encode
-
-    return encode(self)
-
-  def asdict(self) -> dict[str, Any]:
-    return msgspec.to_builtins(self)
-
-
-class GenerationParams(Serializable):
-  max_context_len: int
-  max_new_tokens: int
-  top_k: int
-  top_p: float
-  temperature: float
-  repeat_penalty: float
-  frequency_penalty: float
-  system_prompt: str
-
-
-class ModelConfig(Serializable):
-  name: str
-  size: float
-  filepath: StrOrPath
-  tokenizer: StrOrPath
-  params: GenerationParams | None = None
+class GenerationConfig(Serializable):
+  max_length: int = 4096
+  # FIXME: MAX_SUPPORTED_CONTEXT_LEN doesn't work if the context_len in .rknn model is smaller
+  max_new_tokens: int = -1  # is it actually present in HF generation configs?
+  top_k: int = 1
+  top_p: float = 0.9
+  temperature: float = 0.7
+  repetition_penalty: float = 1.1
+  frequency_penalty: float = 0.0
 
 
 class ChatRole(enum.StrEnum):
@@ -73,18 +56,35 @@ StreamCallback = Callable[[str], None]
 
 
 class RKLLMModel:
-  def __init__(self, rkllm: RKLLM, config: ModelConfig) -> None:
+  def __init__(self, model: str | ModelInfo) -> None:
     from transformers import AutoTokenizer
     from transformers import PreTrainedTokenizer
 
-    self.rkllm = rkllm
-    self.config = config
-    self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+    if isinstance(model, str):
+      model = model_registry.get_model(model)
 
-  @classmethod
-  def from_config(cls, config: ModelConfig) -> "RKLLMModel":
-    rkllm = RKLLM(config.filepath)
-    return cls(rkllm, config)
+    model_dir = model_registry.get_model_dir(model)
+    tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_dir)
+
+    gen_config = GenerationConfig()
+
+    hf_gen_config = model_dir.joinpath("generation_config.json")
+    if hf_gen_config.exists():
+      gen_config = GenerationConfig.from_json(hf_gen_config, strict=False)
+
+    self.rkllm = RKLLM(
+      model_dir / model.filename,
+      temperature=gen_config.temperature,
+      top_k=gen_config.top_k,
+      top_p=gen_config.top_p,
+      max_context_len=gen_config.max_length,
+      repeat_penalty=gen_config.repetition_penalty,
+      frequency_penalty=gen_config.frequency_penalty,
+    )
+    # TODO: how to get the init status? Cause it can silently fail on some params mismatch
+    self.tokenizer = tokenizer
+    self.model_info = model
+    self.gen_config = gen_config
 
   def generate(
     self,
@@ -105,16 +105,17 @@ class RKLLMModel:
     Returns:
       A chat message object containing the model's response.
     """
+
     from api.binding import global_text
 
     prompt = self.tokenizer.apply_chat_template(
-      [message.asdict() if isinstance(message, ChatMessage) else message for message in messages],
+      [message.to_dict() if isinstance(message, ChatMessage) else message for message in messages],
       tokenize=True,
       add_generation_prompt=True,
     )
 
     if debug:
-      logger.debug("Detokenized prompt:\n{}", self.tokenizer.decode(prompt))
+      logger.debug("Input prompt:\n{}", self.tokenizer.decode(prompt))
 
     output: list[str] = []
     stops = set(stop_sequences or [])
@@ -130,8 +131,8 @@ class RKLLMModel:
             stream_callback(token)
           if token in stops:
             break
-          time.sleep(API_POLL_DELAY)
-        gen_thread.join(timeout=API_POLL_DELAY)
+          time.sleep(CAPI_POLL_DELAY)
+        gen_thread.join(timeout=CAPI_POLL_DELAY)
         gen_finished = not gen_thread.is_alive()
       content = "".join(output)
       return ChatMessage(ChatRole.ASSISTANT, content)

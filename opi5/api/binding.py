@@ -9,10 +9,12 @@ import sys
 from pathlib import Path
 
 
-lib_path = os.path.join(os.path.dirname(__file__), "lib", "librkllmrt.so")
+MAX_SUPPORTED_CONTEXT_LENGTH = 16384
+
+LIB_PATH = os.path.join(os.path.dirname(__file__), "lib", "librkllmrt.so")
 
 # Set the dynamic library path
-rkllm_lib = ctypes.CDLL(lib_path)
+RKLLM_LIB = ctypes.CDLL(LIB_PATH)
 
 # Define the structures from the library
 RKLLM_Handle_t = ctypes.c_void_p
@@ -151,6 +153,7 @@ split_byte_data = bytes(b"")  # Used to store the segmented byte data
 
 
 # Define the callback function
+# TODO: make it a class and configure the verbosity and overall handling logic
 def callback_impl(result, userdata, state):
   global global_text, global_state, split_byte_data
   # print(f"{state=}")
@@ -218,21 +221,32 @@ StrOrPath = str | Path
 # Define the RKLLM class, which includes initialization, inference, and release operations for the RKLLM model in the dynamic library
 class RKLLM(object):
   def __init__(
-    self, model_path: StrOrPath, lora_model_path: StrOrPath | None = None, prompt_cache_path: StrOrPath | None = None
+    self,
+    model_path: StrOrPath,
+    lora_model_path: StrOrPath | None = None,
+    prompt_cache_path: StrOrPath | None = None,
+    max_context_len: int = 4096,
+    max_new_tokens: int = -1,
+    top_k: int = 1,
+    top_p: float = 0.9,
+    temperature: float = 0.8,
+    repeat_penalty: float = 1.1,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
   ) -> None:
     rkllm_param = RKLLMParam()
     rkllm_param.model_path = bytes(str(model_path), "utf-8")
 
-    rkllm_param.max_context_len = 4096
-    rkllm_param.max_new_tokens = -1
+    rkllm_param.max_context_len = max_context_len
+    rkllm_param.max_new_tokens = max_new_tokens
     rkllm_param.skip_special_token = True
     rkllm_param.n_keep = -1
-    rkllm_param.top_k = 1
-    rkllm_param.top_p = 0.9
-    rkllm_param.temperature = 0.8
-    rkllm_param.repeat_penalty = 1.1
-    rkllm_param.frequency_penalty = 0.0
-    rkllm_param.presence_penalty = 0.0
+    rkllm_param.top_k = top_k
+    rkllm_param.top_p = top_p
+    rkllm_param.temperature = temperature
+    rkllm_param.repeat_penalty = repeat_penalty
+    rkllm_param.frequency_penalty = frequency_penalty
+    rkllm_param.presence_penalty = presence_penalty
 
     rkllm_param.mirostat = 0
     rkllm_param.mirostat_tau = 5.0
@@ -250,12 +264,12 @@ class RKLLM(object):
 
     self.handle = RKLLM_Handle_t()
 
-    self.rkllm_init = rkllm_lib.rkllm_init
+    self.rkllm_init = RKLLM_LIB.rkllm_init
     self.rkllm_init.argtypes = [ctypes.POINTER(RKLLM_Handle_t), ctypes.POINTER(RKLLMParam), callback_type]
     self.rkllm_init.restype = ctypes.c_int
     self.rkllm_init(ctypes.byref(self.handle), ctypes.byref(rkllm_param), callback)
 
-    self.rkllm_run = rkllm_lib.rkllm_run
+    self.rkllm_run = RKLLM_LIB.rkllm_run
     self.rkllm_run.argtypes = [
       RKLLM_Handle_t,
       ctypes.POINTER(RKLLMInput),
@@ -264,7 +278,7 @@ class RKLLM(object):
     ]
     self.rkllm_run.restype = ctypes.c_int
 
-    self.set_chat_template = rkllm_lib.rkllm_set_chat_template
+    self.set_chat_template = RKLLM_LIB.rkllm_set_chat_template
     self.set_chat_template.argtypes = [RKLLM_Handle_t, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
     self.set_chat_template.restype = ctypes.c_int
 
@@ -279,7 +293,7 @@ class RKLLM(object):
     #   ctypes.c_char_p(prompt_postfix.encode("utf-8")),
     # )
 
-    self.rkllm_destroy = rkllm_lib.rkllm_destroy
+    self.rkllm_destroy = RKLLM_LIB.rkllm_destroy
     self.rkllm_destroy.argtypes = [RKLLM_Handle_t]
     self.rkllm_destroy.restype = ctypes.c_int
 
@@ -292,7 +306,7 @@ class RKLLM(object):
       lora_adapter.lora_adapter_name = ctypes.c_char_p((lora_adapter_name).encode("utf-8"))
       lora_adapter.scale = 1.0
 
-      rkllm_load_lora = rkllm_lib.rkllm_load_lora
+      rkllm_load_lora = RKLLM_LIB.rkllm_load_lora
       rkllm_load_lora.argtypes = [RKLLM_Handle_t, ctypes.POINTER(RKLLMLoraAdapter)]
       rkllm_load_lora.restype = ctypes.c_int
       rkllm_load_lora(self.handle, ctypes.byref(lora_adapter))
@@ -309,10 +323,10 @@ class RKLLM(object):
     if prompt_cache_path:
       self.prompt_cache_path = prompt_cache_path
 
-      rkllm_load_prompt_cache = rkllm_lib.rkllm_load_prompt_cache
+      rkllm_load_prompt_cache = RKLLM_LIB.rkllm_load_prompt_cache
       rkllm_load_prompt_cache.argtypes = [RKLLM_Handle_t, ctypes.c_char_p]
       rkllm_load_prompt_cache.restype = ctypes.c_int
-      rkllm_load_prompt_cache(self.handle, ctypes.c_char_p((prompt_cache_path).encode("utf-8")))
+      rkllm_load_prompt_cache(self.handle, ctypes.c_char_p(str(prompt_cache_path).encode("utf-8")))
 
   # TODO: add type hints
   def tokens_to_ctypes_array(self, tokens, ctype) -> type:
@@ -329,8 +343,8 @@ class RKLLM(object):
       rkllm_input.input_mode = RKLLMInputMode.RKLLM_INPUT_TOKEN
       rkllm_input.input_data.token_input.input_ids = self.tokens_to_ctypes_array(prompt, ctypes.c_int)
       rkllm_input.input_data.token_input.n_tokens = ctypes.c_ulong(len(prompt))
+
     self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)
-    return
 
   def release(self) -> None:
     self.rkllm_destroy(self.handle)
