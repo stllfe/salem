@@ -4,7 +4,8 @@ import enum
 import threading
 import time
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from functools import partial
 from pathlib import Path
 
 import msgspec
@@ -12,9 +13,9 @@ import msgspec
 from loguru import logger
 
 from api.binding import RKLLM
-from api.utils import ModelInfo
+from api.models import ModelInfo
+from api.models import model_registry
 from api.utils import Serializable
-from api.utils import model_registry
 
 
 CAPI_POLL_DELAY = 0.005
@@ -141,3 +142,30 @@ class RKLLMModel:
 
   def __call__(self, *args, **kwargs):
     return self.generate(*args, **kwargs)
+
+  def generate_stream(
+    self,
+    messages: list[ChatMessage | dict[str, str]],
+    stop_sequences: Sequence[str] | None = None,
+    debug: bool = False,
+    **kwargs,
+  ) -> Iterable[str]:
+    import queue
+
+    q: queue.Queue[str] = queue.Queue()
+
+    gen = partial(self.generate, stop_sequences=stop_sequences, stream_callback=q.put, debug=debug, **kwargs)
+    producer = threading.Thread(target=gen, args=(messages,))
+
+    def consumer() -> Iterable[str]:
+      while producer.is_alive():
+        try:
+          yield q.get(block=True, timeout=CAPI_POLL_DELAY)
+        except queue.Empty:
+          continue
+
+    try:
+      producer.start()
+      yield from consumer()
+    finally:
+      producer.join()

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from api.utils import CONFIG_PATH
-from api.utils import init_models
-from api.utils import load_model_registry
+from api.models import CONFIG_PATH
+from api.models import init_models
+from api.models import load_model_registry
 
 
 def main(config_path: Path = CONFIG_PATH, force_download: bool = False) -> None:

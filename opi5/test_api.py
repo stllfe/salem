@@ -2,7 +2,6 @@ import os
 import resource
 import subprocess
 
-from functools import partial
 from pathlib import Path
 
 
@@ -21,9 +20,8 @@ subprocess.run(command, shell=True)
 resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
 
 model = RKLLMModel("qwen2.5:1.5B")
-callback = partial(print, end="", flush=True)
 
 # TODO: make possible to change generation params on-the-fly
-# -> looks like not possible since rknn-llm initializes a runtime once with a set of params
-response = model.generate([{"role": "user", "content": "Hello, what's up?"}], stream_callback=callback, debug=True)
-print(response)
+# NOTE: looks like not possible since rknn-llm initializes a runtime once with a set of params
+for token in model.generate_stream([{"role": "user", "content": "Hello, what's up?"}], debug=True):
+  print(token, end="", flush=True)

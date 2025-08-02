@@ -1,7 +1,7 @@
 # a simplified version inspired by:
 # https://github.com/NotPunchnox/rkllama/blob/d503b5a493c21b7a4cfed2cd6df6b951b5902489/documentation/api/model_naming.md
 
-models_dir: ${oc.env:RKLLM_MODELS_DIR,${oc.env:USER}/rkllm_models}
+models_dir: ${oc.env:RKLLM_MODELS_DIR,${oc.env:USER}/.rkllm_models}
 cache_dir: ${models_dir}/.cache/
 models:
   - family: qwen2.5
