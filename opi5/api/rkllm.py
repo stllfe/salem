@@ -154,8 +154,8 @@ class RKLLMModel:
 
     q: queue.Queue[str] = queue.Queue()
 
-    gen = partial(self.generate, stop_sequences=stop_sequences, stream_callback=q.put, debug=debug, **kwargs)
-    producer = threading.Thread(target=gen, args=(messages,))
+    generate = partial(self.generate, stop_sequences=stop_sequences, stream_callback=q.put, debug=debug, **kwargs)
+    producer = threading.Thread(target=generate, args=(messages,))
 
     def consumer() -> Iterable[str]:
       while producer.is_alive():
