@@ -5,6 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 from msgspec import field
+from tqdm import tqdm
 
 from api.utils import Serializable
 
@@ -101,7 +102,7 @@ def init_models(registry: ModelRegistry, force_download: bool = False) -> None:
     for f in get_paths_info(m.hf_path, list(MODEL_FILES)):
       hf_hub_download(m.hf_path, f.path, cache_dir=cache_dir, local_dir=model_dir, force_download=force_download)
 
-  for model in registry.models:
+  for model in tqdm(registry.models, desc="initializing models", unit="model"):
     try:
       init_model(model)
     except Exception:
