@@ -19,9 +19,24 @@ command = f"sudo bash {scripts_dir.joinpath(script)}"
 subprocess.run(command, shell=True)
 resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
 
-model = RKLLMModel("qwen2.5:1.5B")
+model = RKLLMModel("qwen2.5:3B", prompt_cache_path="./rkllm_cache")
 
 # TODO: make possible to change generation params on-the-fly
 # NOTE: looks like not possible since rknn-llm initializes a runtime once with a set of params
-for token in model.generate_stream([{"role": "user", "content": "Hello, what's up?"}], debug=True):
-  print(token, end="", flush=True)
+messages = []
+try:
+  while True:
+    message = input("$> ")
+    if not message or message == "/exit":
+      break
+    messages.append({"role": "user", "content": message})
+    reply = ""
+    for token in model.generate_stream(messages, debug=True):
+      print(token, end="", flush=True)
+      reply += token
+    messages.append({"role": "assistant", "content": reply})
+except KeyboardInterrupt:
+  pass
+finally:
+  print("\nGracefull shutdown...")
+  model.release()

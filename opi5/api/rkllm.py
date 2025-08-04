@@ -18,7 +18,7 @@ from api.models import model_registry
 from api.utils import Serializable
 
 
-CAPI_POLL_DELAY = 0.005
+RKNN_API_POLL_DELAY = 0.005
 MAX_SUPPORTED_CONTEXT_LENGTH = 16384
 
 StrOrPath = str | Path
@@ -57,7 +57,7 @@ StreamCallback = Callable[[str], None]
 
 
 class RKLLMModel:
-  def __init__(self, model: str | ModelInfo) -> None:
+  def __init__(self, model: str | ModelInfo, prompt_cache_path: StrOrPath | None = None) -> None:
     from transformers import AutoTokenizer
     from transformers import PreTrainedTokenizer
 
@@ -75,6 +75,7 @@ class RKLLMModel:
 
     self.rkllm = RKLLM(
       model_dir / model.filename,
+      prompt_cache_path=prompt_cache_path,
       temperature=gen_config.temperature,
       top_k=gen_config.top_k,
       top_p=gen_config.top_p,
@@ -120,25 +121,23 @@ class RKLLMModel:
 
     output: list[str] = []
     stops = set(stop_sequences or [])
-    try:
-      gen_thread = threading.Thread(target=self.rkllm.run, args=(prompt,))
-      gen_thread.start()
-      gen_finished = False
-      while not gen_finished:
-        while len(global_text) > 0:
-          token = global_text.pop(0)
-          output.append(token)
-          if stream_callback:
-            stream_callback(token)
-          if token in stops:
-            break
-          time.sleep(CAPI_POLL_DELAY)
-        gen_thread.join(timeout=CAPI_POLL_DELAY)
-        gen_finished = not gen_thread.is_alive()
-      content = "".join(output)
-      return ChatMessage(ChatRole.ASSISTANT, content)
-    finally:
-      self.rkllm.release()
+
+    gen_thread = threading.Thread(target=self.rkllm.run, args=(prompt,))
+    gen_thread.start()
+    gen_finished = False
+    while not gen_finished:
+      while len(global_text) > 0:
+        token = global_text.pop(0)
+        output.append(token)
+        if stream_callback:
+          stream_callback(token)
+        if token in stops:
+          break
+        time.sleep(RKNN_API_POLL_DELAY)
+      gen_thread.join(timeout=RKNN_API_POLL_DELAY)
+      gen_finished = not gen_thread.is_alive()
+    content = "".join(output)
+    return ChatMessage(ChatRole.ASSISTANT, content)
 
   def __call__(self, *args, **kwargs):
     return self.generate(*args, **kwargs)
@@ -160,7 +159,7 @@ class RKLLMModel:
     def consumer() -> Iterable[str]:
       while producer.is_alive():
         try:
-          yield q.get(block=True, timeout=CAPI_POLL_DELAY)
+          yield q.get(block=True, timeout=RKNN_API_POLL_DELAY)
         except queue.Empty:
           continue
 
@@ -169,3 +168,6 @@ class RKLLMModel:
       yield from consumer()
     finally:
       producer.join()
+
+  def release(self) -> None:
+    self.rkllm.release()
