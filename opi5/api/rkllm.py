@@ -7,15 +7,15 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import msgspec
-
-from loguru import logger
 
 from api.binding import RKLLM
 from api.models import ModelInfo
 from api.models import model_registry
 from api.utils import Serializable
+from loguru import logger
 
 
 RKNN_API_POLL_DELAY = 0.005
@@ -47,9 +47,19 @@ class StopReason(enum.StrEnum):
   ERROR = enum.auto()
 
 
+class TokenUsage(Serializable):
+  prompt_tokens: int | None = None
+  completion_tokens: int | None = None
+
+
 class ChatMessage(Serializable):
   role: ChatRole
   content: str
+
+
+class ChatResponse(Serializable):
+  message: ChatMessage
+  usage: TokenUsage = msgspec.field(default_factory=TokenUsage)
   stop_reason: StopReason = msgspec.field(default=StopReason.STOP_TOKEN)
 
 
@@ -82,20 +92,25 @@ class RKLLMModel:
       max_context_len=gen_config.max_length,
       repeat_penalty=gen_config.repetition_penalty,
       frequency_penalty=gen_config.frequency_penalty,
+      keep_history=True,
     )
     # TODO: how to get the init status? Cause it can silently fail on some params mismatch
     self.tokenizer = tokenizer
     self.model_info = model
     self.gen_config = gen_config
 
+    self.last_token_usage: TokenUsage | None = None
+    self.last_stop_reason: StopReason | None = None
+
   def generate(
     self,
     messages: list[ChatMessage | dict[str, str]],
+    tools: list[dict[str, Any]] | None = None,
     stop_sequences: Sequence[str] | None = None,
     stream_callback: StreamCallback | None = None,
     debug: bool = False,
     **kwargs,
-  ) -> ChatMessage:
+  ) -> ChatResponse:
     """Process the input messages and return the model's response.
 
     Args:
@@ -108,10 +123,21 @@ class RKLLMModel:
       A chat message object containing the model's response.
     """
 
+    from api.binding import global_stats
     from api.binding import global_text
 
+    def prepare_message(m: ChatMessage | dict[str, Any]) -> dict[str, Any]:
+      assert isinstance(m, (ChatMessage, dict))  # noqa
+      if isinstance(m, dict):
+        cm = ChatMessage.from_dict(m)
+        return cm.to_dict()
+      return m.to_dict()
+
+    conversation = list(map(prepare_message, messages))
+    # NOTE: smolagents write a huge system prompt with all tools listed already
     prompt = self.tokenizer.apply_chat_template(
-      [message.to_dict() if isinstance(message, ChatMessage) else message for message in messages],
+      conversation,
+      tools=tools,
       tokenize=True,
       add_generation_prompt=True,
     )
@@ -119,10 +145,17 @@ class RKLLMModel:
     if debug:
       logger.debug("Input prompt:\n{}", self.tokenizer.decode(prompt))
 
+    # TODO: I don't understand what's the reason to do that anyways if we use our tokenizer here
+    # if tools is not None:
+    #   import json
+
+    #   system_prompt = next((m["content"] for m in conversation if str(m["role"]) == "system"), "")
+    #   self.rkllm.set_function_tools(system_prompt, json.dumps(tools), "tool_response")
+
     output: list[str] = []
     stops = set(stop_sequences or [])
 
-    gen_thread = threading.Thread(target=self.rkllm.run, args=(prompt,))
+    gen_thread = threading.Thread(target=self.rkllm.run, args=(prompt,), kwargs=kwargs)
     gen_thread.start()
     gen_finished = False
     while not gen_finished:
@@ -137,7 +170,16 @@ class RKLLMModel:
       gen_thread.join(timeout=RKNN_API_POLL_DELAY)
       gen_finished = not gen_thread.is_alive()
     content = "".join(output)
-    return ChatMessage(ChatRole.ASSISTANT, content)
+    usage = TokenUsage(
+      prompt_tokens=global_stats.get("prefill_tokens"),
+      completion_tokens=global_stats.get("generate_tokens"),
+    )
+    message = ChatMessage(ChatRole.ASSISTANT, content)
+    response = ChatResponse(message, usage)
+
+    self.last_token_usage = usage
+    self.last_stop_reason = response.stop_reason
+    return response
 
   def __call__(self, *args, **kwargs):
     return self.generate(*args, **kwargs)
@@ -145,6 +187,7 @@ class RKLLMModel:
   def generate_stream(
     self,
     messages: list[ChatMessage | dict[str, str]],
+    tools: list[dict[str, Any]] | None = None,
     stop_sequences: Sequence[str] | None = None,
     debug: bool = False,
     **kwargs,
@@ -153,7 +196,14 @@ class RKLLMModel:
 
     q: queue.Queue[str] = queue.Queue()
 
-    generate = partial(self.generate, stop_sequences=stop_sequences, stream_callback=q.put, debug=debug, **kwargs)
+    generate = partial(
+      self.generate,
+      tools=tools,
+      stop_sequences=stop_sequences,
+      stream_callback=q.put,
+      debug=debug,
+      **kwargs,
+    )
     producer = threading.Thread(target=generate, args=(messages,))
 
     def consumer() -> Iterable[str]:

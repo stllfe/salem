@@ -11,7 +11,7 @@ from salem.tools.types import Language
 from salem.tools.types import WikiExtract
 
 
-URL = "https://search.genie.stanford.edu/wikipedia"
+URL = "https://search.genie.stanford.edu/wikipedia_20250320"
 FALLBACK_LANGUAGE: Language = "en"
 
 

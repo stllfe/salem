@@ -1,24 +1,25 @@
 import os
 
-from openinference.instrumentation.smolagents import SmolagentsInstrumentor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from smolagents import LiteLLMModel
-from smolagents import OpenAIServerModel
+from smolagents.models import LiteLLMModel
+from smolagents.models import OpenAIServerModel
 
+import smol.monitor  # noqa
 
-endpoint = "http://0.0.0.0:6006/v1/traces"
-trace_provider = TracerProvider()
-trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint)))
+from smol.rknn_model import RKLLMModel
 
-SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
 
 match os.getenv("MODEL"):
   case "gpt-4o":
     model = OpenAIServerModel("gpt-4o", api_key=os.environ["OPENAI_API_KEY"])
   case "claude":
     model = LiteLLMModel(model_id="anthropic/claude-3-7-sonnet-latest", api_key=os.environ["ANTHROPIC_API_KEY"])
+  case "rkllm":
+    import os
+    import resource
+
+    os.environ["RKLLM_LOG_LEVEL"] = "2"  # will print token stats
+    resource.setrlimit(resource.RLIMIT_NOFILE, (102400, 102400))
+    model = RKLLMModel("qwen2.5:3B")
   case _:
     model = OpenAIServerModel("default", api_base="http://localhost:3000/v1", api_key="[EMPTY]", tool_choice="auto")
 

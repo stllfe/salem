@@ -90,7 +90,7 @@ class Runtime:
       CURRENT.LANGUAGE: self.language,
     }
     ctx = {e.alias: v for e, v in env_map.items()}
-    out = Template(value, output_encoding="utf-8").render(**ctx)
+    out = Template(value).render(**ctx)
     return cast(str, out)
 
   def get_backend(self, backend: type[T]) -> T:

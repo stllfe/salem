@@ -44,7 +44,10 @@ agent = CodeAgent(tools=[], model=model, prompt_templates=CODE_AGENT_PROMPTS, ma
 
 while True:
   try:
-    user = input("$> ").strip()
+    # user = input("$> ").strip()
+    # if not user or user == "/exit":
+    #   break
+    user = "who's david laid"
     answer = agent.run(user)
   except KeyboardInterrupt:
     break
